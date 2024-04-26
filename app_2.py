@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from dash_bootstrap_templates import load_figure_template
 load_figure_template(["cyborg", "darkly"])
 
 st.set_page_config(layout="wide")
@@ -64,7 +63,7 @@ soma_por_estacao.rename(columns={'delta_time_hours': 'Tempo de uso (h)'}, inplac
 soma_por_estacao.rename(columns={'estacao': 'Estação de Trabalho'}, inplace=True)
 total_de_horas_pedido = round(ordem['delta_time_hours'].sum(),2)
 
-fig = px.pie(soma_por_estacao, values='Tempo de uso (h)', names='Estação de Trabalho', title='Proporção de Tempo de Uso por Máquina em Cada Pedido', template='darkly', width=800, height=500)
+fig = px.pie(soma_por_estacao, values='Tempo de uso (h)', names='Estação de Trabalho', title='Proporção de Tempo de Uso por Máquina em Cada Pedido', width=800, height=500)
 fig.update_layout(title_yref='container',title_xanchor = 'center',title_x = 0.43, title_y = 0.95, legend=dict(font=dict(size=18)),font=dict(size=20), title_font=dict(size=20))
 col4.plotly_chart(fig, use_container_width=True)
 
