@@ -17,7 +17,7 @@ ordens.loc[:, 'delta_time_hours'] = ordens['delta_time_seconds'] / 3600
 
 estacao = st.sidebar.selectbox("Estação", ordens["estacao"].sort_values().unique(), index= 0,placeholder ='Escolha uma opção')
 st.header(f"Análise Hora de Trabalho Mensal {estacao}")
-
+ordens["data_ini"].replace({pd.NA: np.NaN}, inplace=True)
 ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], format = 'mixed', errors='coerce')
 ordens=ordens.sort_values("data_ini")
 ordens["Ano"] = ordens["data_ini"].dt.year.astype('Int64') 
