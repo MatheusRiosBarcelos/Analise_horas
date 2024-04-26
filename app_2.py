@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-load_figure_template(["cyborg", "darkly"])
+
 
 st.set_page_config(layout="wide")
 
