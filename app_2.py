@@ -20,10 +20,8 @@ st.header(f"Análise Hora de Trabalho Mensal {estacao}")
 
 ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], format = 'mixed', errors='coerce')
 ordens=ordens.sort_values("data_ini")
-ordens["Ano"] = ordens["data_ini"].apply(lambda x: x.year if not pd.isnull(x) else None)
-ordens["Mes"] = ordens["data_ini"].apply(lambda x: x.month if not pd.isnull(x) else None)
-ordens["Ano"] = ordens["Ano"].astype('Int64')  # Use 'Int64' to allow NaN and integers
-ordens["Mes"] = ordens["Mes"].astype('Int64')
+ordens["Ano"] = ordens["data_ini"].dt.year.astype('Int64') 
+ordens["Mes"] = ordens["data_ini"].dt.month.astype('Int64')
 target_year = st.sidebar.selectbox("Ano", ordens["Ano"].sort_values().unique(), index= 1 ,placeholder ='Escolha uma opção')
 target_month = st.sidebar.selectbox("Mês", ordens["Mes"].sort_values().unique(), index= 0,placeholder ='Escolha uma opção')
 
