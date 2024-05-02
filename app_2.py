@@ -79,4 +79,5 @@ with col5:
 
 col5.dataframe(soma_por_estacao, height= 250, width= 500,hide_index=True)
 
-st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
+with col0:
+    st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
