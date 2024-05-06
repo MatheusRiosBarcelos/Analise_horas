@@ -34,9 +34,10 @@ with tab1:
         target_year = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), index= 1 ,placeholder ='Escolha uma opção')
     new_df = ordens[ordens['estacao'] == estacao]
     df_filtrado = new_df[new_df['Datetime_ini'].dt.month == target_month]
+    df_filtrado_2 = df_filtrado[df_filtrado['Datetime_ini'].dt.year == target_year]
     hora_esperada_de_trabalho = 160
     num_entries = df_filtrado.shape[0]
-    total_de_horas = round(df_filtrado['delta_time_hours'].sum(), 1)
+    total_de_horas = round(df_filtrado_2['delta_time_hours'].sum(), 1)
     percent_horas = round((total_de_horas/hora_esperada_de_trabalho) * 100, 1)
     media = round(total_de_horas/num_entries,1)
     delta_1 = round(percent_horas - 100, 1)
@@ -44,6 +45,16 @@ with tab1:
     col1.metric(f"Total de Horas da Máquina em {target_month}-{target_year}", f"{total_de_horas}H", f'{round(total_de_horas-160,1)}H')
     col2.metric('Eficiência (%)', f'{percent_horas}%', f'{delta_1}%')
     col3.metric("Média", f"{media}H")
+    col11,col12 = st.columns(2)
+    new_df_ano = new_df[new_df['Datetime_ini'].dt.year == target_year]
+    ordem_2 = new_df_ano.groupby(['estacao', new_df_ano['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
+    ordem_2.rename(columns = {'delta_time_hours':'Tempo de uso total (H)'}, inplace = True)
+    ordem_2.rename(columns = {'Datetime_ini': 'Mês'}, inplace = True)
+    fig = px.bar(ordem_2, x='Mês', y='Tempo de uso total (H)')
+    fig.update_xaxes(tickvals=list(range(len(ordem_2))))
+    col11.plotly_chart(fig)
+
+
 with tab2:
     col9,col10 = st.columns([0.2,0.8])
     with col9:
@@ -63,7 +74,7 @@ with tab2:
     soma_por_estacao = ordem.groupby('estacao')['delta_time_hours'].sum().reset_index().round(2)
     soma_por_estacao.rename(columns={'delta_time_hours': 'Tempo de uso total (H)'}, inplace=True)
     soma_por_estacao.rename(columns={'estacao': 'Estação de Trabalho'}, inplace=True)
-    soma_por_estacao['Tempo de uso por Peça (min)'] = (soma_por_estacao['Tempo de uso total (H)']/quant)*60
+    soma_por_estacao['Tempo de uso por Peça (min)'] = round((soma_por_estacao['Tempo de uso total (H)']/quant)*60,2)
     total_de_minutos_peca = round(soma_por_estacao['Tempo de uso por Peça (min)'].sum(),2)
     total_de_horas_pedido = round(soma_por_estacao['Tempo de uso total (H)'].sum(),2)
 
