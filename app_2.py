@@ -45,15 +45,17 @@ with tab1:
     col1.metric(f"Total de Horas da Máquina em {target_month}-{target_year}", f"{total_de_horas}H", f'{round(total_de_horas-160,1)}H')
     col2.metric('Eficiência (%)', f'{percent_horas}%', f'{delta_1}%')
     col3.metric("Média", f"{media}H")
-    col11,col12 = st.columns(2)
+    col11,col12 = st.columns([0.8,0.2])
     new_df_ano = new_df[new_df['Datetime_ini'].dt.year == target_year]
-    ordem_2 = new_df_ano.groupby(['estacao', new_df_ano['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
+    ordem_2 = new_df_ano.groupby(['estacao', new_df_ano['Datetime_ini'].dt.month, 'nome_func'])['delta_time_hours'].sum().reset_index().round(2)
     ordem_2.rename(columns = {'delta_time_hours':'Tempo de uso total (H)'}, inplace = True)
     ordem_2.rename(columns = {'Datetime_ini': 'Mês'}, inplace = True)
-    fig = px.bar(ordem_2, x='Mês', y='Tempo de uso total (H)')
-    fig.update_xaxes(tickvals=list(range(len(ordem_2))))
-    col11.plotly_chart(fig)
 
+    fig2 = px.bar(ordem_2, x = 'Mês', y = round((ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho)*100,2),color='nome_func',title= 'Eficiência Mensal',text_auto='.2s', width=1300)
+    fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False)
+    fig2.update_layout(yaxis_title = 'Eficiência (%)',legend_title_text = 'Colaborador', title_x = 0.5, title_y = 0.95,title_xanchor = 'center')
+    fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
+    col11.plotly_chart(fig2)
 
 with tab2:
     col9,col10 = st.columns([0.2,0.8])
