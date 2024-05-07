@@ -88,7 +88,7 @@ with tab2:
     nova_linha = {'Estação de Trabalho': 'Total', 'Tempo de uso total (H)': total_de_horas_pedido,'Tempo de uso por Peça (min)': total_de_minutos_peca}
     soma_por_estacao = pd.concat([soma_por_estacao, pd.DataFrame([nova_linha])], ignore_index=True)
     with col5:
-        st.markdown(f"<h1 style='font-size: 20px;'>Tabela de Horas por Estação no PV {target_pv}</h1>", unsafe_allow_html=True)
+        st.markdown(f"<h1 style='font-size: 20px;'>Tabela de Horas por Estação no PV {target_pv}/Número de peças é {quant}</h1>", unsafe_allow_html=True)
 
     col5.dataframe(soma_por_estacao, height= 500, width= 500,hide_index=True)
 
