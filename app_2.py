@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from datetime  import datetime as dt
 
 st.set_page_config(layout="wide")
 
@@ -15,11 +16,9 @@ ordens.loc[:,'Datetime_fim'] = pd.to_datetime(ordens['data_fim'] + ' ' + ordens[
 ordens.loc[:, 'delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime_ini']).dt.total_seconds()
 ordens.loc[:, 'delta_time_hours'] = ordens['delta_time_seconds'] / 3600
 ordens.loc[:,'delta_time_min'] = ordens['delta_time_seconds']/60
-
 st.image('logo.png', width= 150)
 
-tab1, tab2 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV"])
-
+tab1, tab2, tab3 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "MÉDIA POR PEÇA"])
 with tab1:
     col6, col7, col8 = st.columns(3)
     with col6:
@@ -32,6 +31,7 @@ with tab1:
         target_month = st.selectbox("Mês", ordens["Mes"].sort_values().unique(), index= 0,placeholder ='Escolha uma opção')
     with col8:
         target_year = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), index= 1 ,placeholder ='Escolha uma opção')
+    
     new_df = ordens[ordens['estacao'] == estacao]
     df_filtrado = new_df[new_df['Datetime_ini'].dt.month == target_month]
     df_filtrado_2 = df_filtrado[df_filtrado['Datetime_ini'].dt.year == target_year]
@@ -41,22 +41,24 @@ with tab1:
     percent_horas = round((total_de_horas/hora_esperada_de_trabalho) * 100, 1)
     media = round(total_de_horas/num_entries,1)
     delta_1 = round(percent_horas - 100, 1)
+    
     col1, col2, col3 = st.columns(3)
     col1.metric(f"Total de Horas da Máquina em {target_month}-{target_year}", f"{total_de_horas}H", f'{round(total_de_horas-160,1)}H')
     col2.metric('Eficiência (%)', f'{percent_horas}%', f'{delta_1}%')
     col3.metric("Média", f"{media}H")
+   
     col11,col12 = st.columns([0.8,0.2])
+    
     new_df_ano = new_df[new_df['Datetime_ini'].dt.year == target_year]
     ordem_2 = new_df_ano.groupby(['estacao', new_df_ano['Datetime_ini'].dt.month, 'nome_func'])['delta_time_hours'].sum().reset_index().round(2)
     ordem_2.rename(columns = {'delta_time_hours':'Tempo de uso total (H)'}, inplace = True)
     ordem_2.rename(columns = {'Datetime_ini': 'Mês'}, inplace = True)
-
+    
     fig2 = px.bar(ordem_2, x = 'Mês', y = round((ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho)*100,2),color='nome_func',title= 'Eficiência Mensal',text_auto='.2s', width=1300)
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False)
     fig2.update_layout(yaxis_title = 'Eficiência (%)',legend_title_text = 'Colaborador', title_x = 0.5, title_y = 0.95,title_xanchor = 'center')
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
     col11.plotly_chart(fig2)
-
 with tab2:
     col9,col10 = st.columns([0.2,0.8])
     with col9:
@@ -80,17 +82,29 @@ with tab2:
     total_de_minutos_peca = round(soma_por_estacao['Tempo de uso por Peça (min)'].sum(),2)
     total_de_horas_pedido = round(soma_por_estacao['Tempo de uso total (H)'].sum(),2)
 
-
     fig = px.pie(soma_por_estacao, values='Tempo de uso total (H)', names='Estação de Trabalho', title='Proporção de Tempo de Uso por Máquina em Cada Pedido', width=800, height=500)
     fig.update_layout(title_yref='container',title_xanchor = 'center',title_x = 0.43, title_y = 0.95, legend=dict(font=dict(size=18)),font=dict(size=20), title_font=dict(size=20))
     col4.plotly_chart(fig, use_container_width=True)
-
     nova_linha = {'Estação de Trabalho': 'Total', 'Tempo de uso total (H)': total_de_horas_pedido,'Tempo de uso por Peça (min)': total_de_minutos_peca}
     soma_por_estacao = pd.concat([soma_por_estacao, pd.DataFrame([nova_linha])], ignore_index=True)
     with col5:
         st.markdown(f"<h1 style='font-size: 20px;'>Tabela de Horas por Estação no PV {target_pv}/Número de peças é {quant}</h1>", unsafe_allow_html=True)
-
     col5.dataframe(soma_por_estacao, height= 500, width= 500,hide_index=True)
-
     with col10:
         st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
+with tab3:
+    col12, col13, col14 = st.columns(3)
+    with col12:
+        target_peca = st.selectbox("Peça", pedidos["descricao"].sort_values().unique(), index= 0,placeholder ='Escolha uma opção')
+    pedidos_cleaned = pedidos.dropna(subset=['descricao'])
+    peca = pedidos_cleaned[pedidos_cleaned['descricao'].str.contains(target_peca)]
+    filtro_df_2 = peca['ordem']
+    ordem_peca = ordens[ordens['ordem'].isin(filtro_df_2)]
+    peca_estacao = ordem_peca.groupby('estacao')['delta_time_min'].sum().reset_index().round(2)
+    total = round(peca_estacao['delta_time_min'].sum(),2)
+    nova_linha_2 = {'estacao': 'Total', 'delta_time_min': total}
+    peca_estacao = pd.concat([peca_estacao, pd.DataFrame([nova_linha_2])], ignore_index=True)
+    media_2 = round(total / len(peca_estacao['estacao']),2)
+    media_3 = round(media_2/60,2)
+    col13.metric("Tempo médio para a fabricação em Horas", f"{media_3}H")
+    col14.metric("Tempo médio para a fabricação em Minutos", f"{media_2}min")
