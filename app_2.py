@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from datetime  import datetime as dt
+from datetime  import datetime as dt , timedelta
 
 st.set_page_config(layout="wide")
 
@@ -59,6 +59,7 @@ with tab1:
     fig2.update_layout(yaxis_title = 'Eficiência (%)',legend_title_text = 'Colaborador', title_x = 0.5, title_y = 0.95,title_xanchor = 'center')
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
     col11.plotly_chart(fig2)
+
 with tab2:
     col9,col10 = st.columns([0.2,0.8])
     with col9:
@@ -89,9 +90,10 @@ with tab2:
     soma_por_estacao = pd.concat([soma_por_estacao, pd.DataFrame([nova_linha])], ignore_index=True)
     with col5:
         st.markdown(f"<h1 style='font-size: 20px;'>Tabela de Horas por Estação no PV {target_pv}/Número de peças é {quant}</h1>", unsafe_allow_html=True)
-    col5.dataframe(soma_por_estacao, height= 500, width= 500,hide_index=True)
+    col5.dataframe(soma_por_estacao, width= 500,hide_index=True)
     with col10:
         st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
+
 with tab3:
     col12, col13, col14 = st.columns(3)
     with col12:
@@ -102,9 +104,20 @@ with tab3:
     ordem_peca = ordens[ordens['ordem'].isin(filtro_df_2)]
     peca_estacao = ordem_peca.groupby('estacao')['delta_time_min'].sum().reset_index().round(2)
     total = round(peca_estacao['delta_time_min'].sum(),2)
-    nova_linha_2 = {'estacao': 'Total', 'delta_time_min': total}
-    peca_estacao = pd.concat([peca_estacao, pd.DataFrame([nova_linha_2])], ignore_index=True)
+    
+    average_minutes = round(peca_estacao['delta_time_min'] / len(peca_estacao['estacao']),0)
+    peca_estacao['time_delta'] = average_minutes.apply(lambda x: timedelta(minutes=x))
+    base_datetime = pd.Timestamp.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    peca_estacao['result_datetime'] = base_datetime + peca_estacao['time_delta']
+    peca_estacao['result_time'] = peca_estacao['result_datetime'].dt.strftime('%H:%M')
+    peca_estacao.drop('time_delta', axis=1, inplace=True)
+    peca_estacao.drop('result_datetime', axis=1, inplace=True)
     media_2 = round(total / len(peca_estacao['estacao']),2)
     media_3 = round(media_2/60,2)
     col13.metric("Tempo médio para a fabricação em Horas", f"{media_3}H")
     col14.metric("Tempo médio para a fabricação em Minutos", f"{media_2}min")
+    col15, col16 = st.columns([0.90,0.1])
+    peca_estacao.drop('delta_time_min', axis = 1, inplace= True)
+    peca_estacao.rename(columns={'estacao': 'Estação de Trabalho'}, inplace=True)
+    col15.dataframe(peca_estacao, width= 1500,hide_index=True)
+    
