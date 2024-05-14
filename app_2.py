@@ -94,29 +94,29 @@ with tab2:
     with col10:
         st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
 
-# with tab3:
-#     col12, col13, col14 = st.columns(3)
-#     with col12:
-#         target_peca = st.selectbox("Peça", pedidos["descricao"].sort_values().unique(), index= 0,placeholder ='Escolha uma opção')
-#     pedidos_cleaned = pedidos.dropna(subset=['descricao'])
-#     peca = pedidos_cleaned[pedidos_cleaned['descricao'].str.contains(target_peca)]
-#     filtro_df_2 = peca['ordem']
-#     ordem_peca = ordens[ordens['ordem'].isin(filtro_df_2)]
-#     peca_estacao = ordem_peca.groupby('estacao')['delta_time_min'].sum().reset_index().round(2)
-#     total = round(peca_estacao['delta_time_min'].sum(),2)
+with tab3:
+    col12, col13, col14 = st.columns(3)
+    with col12:
+        target_peca = st.selectbox("Peça", pedidos["descricao"].sort_values().unique(), index= 0,placeholder ='Escolha uma opção')
+    pedidos_cleaned = pedidos.dropna(subset=['descricao'])
+    peca = pedidos_cleaned[pedidos_cleaned['descricao'].str.contains(target_peca)]
+    filtro_df_2 = peca['ordem']
+    ordem_peca = ordens[ordens['ordem'].isin(filtro_df_2)]
+    peca_estacao = ordem_peca.groupby('estacao')['delta_time_min'].sum().reset_index().round(2)
+    total = round(peca_estacao['delta_time_min'].sum(),2)
 
-#     average_minutes = round(peca_estacao['delta_time_min'] / len(peca_estacao['estacao']),0)
-#     peca_estacao['time_delta'] = average_minutes.apply(lambda x: timedelta(minutes=x))
-#     base_datetime = pd.Timestamp.now().replace(hour=0, minute=0, second=0, microsecond=0)
-#     peca_estacao['result_datetime'] = base_datetime + peca_estacao['time_delta']
-#     peca_estacao['Tempo Médio por '] = peca_estacao['result_datetime'].dt.strftime('%H:%M')
-#     peca_estacao.drop('time_delta', axis=1, inplace=True)
-#     peca_estacao.drop('result_datetime', axis=1, inplace=True)
-#     media_2 = round(total / len(peca_estacao['estacao']),2)
-#     media_3 = round(media_2/60,2)
-#     col13.metric("Tempo médio para a fabricação em Horas", f"{media_3}H")
-#     col14.metric("Tempo médio para a fabricação em Minutos", f"{media_2}min")
-#     col15, col16 = st.columns([0.90,0.1])
-#     peca_estacao.drop('delta_time_min', axis = 1, inplace= True)
-#     peca_estacao.rename(columns={'estacao': 'Estação de Trabalho'}, inplace=True)
-#     col15.dataframe(peca_estacao, width= 1500,hide_index=True)
+    average_minutes = round(peca_estacao['delta_time_min'] / len(peca_estacao['estacao']),0)
+    peca_estacao['time_delta'] = average_minutes.apply(lambda x: timedelta(minutes=x))
+    base_datetime = pd.Timestamp.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    peca_estacao['result_datetime'] = base_datetime + peca_estacao['time_delta']
+    peca_estacao['Tempo Médio por '] = peca_estacao['result_datetime'].dt.strftime('%H:%M')
+    peca_estacao.drop('time_delta', axis=1, inplace=True)
+    peca_estacao.drop('result_datetime', axis=1, inplace=True)
+    media_2 = round(total / len(peca_estacao['estacao']),2)
+    media_3 = round(media_2/60,2)
+    col13.metric("Tempo médio para a fabricação em Horas", f"{media_3}H")
+    col14.metric("Tempo médio para a fabricação em Minutos", f"{media_2}min")
+    col15, col16 = st.columns([0.90,0.1])
+    peca_estacao.drop('delta_time_min', axis = 1, inplace= True)
+    peca_estacao.rename(columns={'estacao': 'Estação de Trabalho'}, inplace=True)
+    col15.dataframe(peca_estacao, width= 1500,hide_index=True)
