@@ -104,12 +104,12 @@ with tab3:
     ordem_peca = ordens[ordens['ordem'].isin(filtro_df_2)]
     peca_estacao = ordem_peca.groupby('estacao')['delta_time_min'].sum().reset_index().round(2)
     total = round(peca_estacao['delta_time_min'].sum(),2)
-    
+
     average_minutes = round(peca_estacao['delta_time_min'] / len(peca_estacao['estacao']),0)
     peca_estacao['time_delta'] = average_minutes.apply(lambda x: timedelta(minutes=x))
     base_datetime = pd.Timestamp.now().replace(hour=0, minute=0, second=0, microsecond=0)
     peca_estacao['result_datetime'] = base_datetime + peca_estacao['time_delta']
-    peca_estacao['result_time'] = peca_estacao['result_datetime'].dt.strftime('%H:%M')
+    peca_estacao['Tempo Médio por '] = peca_estacao['result_datetime'].dt.strftime('%H:%M')
     peca_estacao.drop('time_delta', axis=1, inplace=True)
     peca_estacao.drop('result_datetime', axis=1, inplace=True)
     media_2 = round(total / len(peca_estacao['estacao']),2)
@@ -120,4 +120,3 @@ with tab3:
     peca_estacao.drop('delta_time_min', axis = 1, inplace= True)
     peca_estacao.rename(columns={'estacao': 'Estação de Trabalho'}, inplace=True)
     col15.dataframe(peca_estacao, width= 1500,hide_index=True)
-    
