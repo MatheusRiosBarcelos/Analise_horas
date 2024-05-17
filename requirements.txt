@@ -2,3 +2,4 @@ pandas==2.2.1
 plotly==5.5.0
 numpy
 datetime
+seaborn
