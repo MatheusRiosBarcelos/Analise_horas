@@ -2,7 +2,22 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime  import datetime as dt , timedelta
+import seaborn as sns
+def convert_to_HM(x):
+    # Convert to float
+    hours = float(x)
+    # Separate the integer part (hours) and the fractional part (minutes)
+    h = int(hours)
+    m = int((hours - h) * 60)
+    # Return in "H:M" format
+    return f"{h}:{m:02d}"
 
+def count_sundays(start_date, end_date):
+    if pd.isna(start_date) or pd.isna(end_date):
+        return 0
+    all_dates = pd.date_range(start=start_date, end=end_date)
+    sundays = all_dates[all_dates.weekday == 6]
+    return len(sundays)
 st.set_page_config(layout="wide")
 
 ordens = pd.read_csv('ordens (4).csv', sep = ',')
@@ -10,6 +25,10 @@ pedidos = pd.read_csv('pedidos (1).csv', sep = ',')
 ordens['ordem'] = ordens['ordem'].fillna(0)
 ordens['data_ini'] = ordens['data_ini'].fillna(0)
 ordens['hora_ini'] = ordens['hora_ini'].fillna(0)
+
+# ordens['ordem'] = pd.to_numeric(ordens['ordem'], errors='coerce')
+# ordens.dropna(subset=['ordem'], inplace=True)
+# ordens['ordem'] = ordens['ordem'].astype(int)
 ordens['ordem'] = ordens['ordem'].astype(int)
 ordens.loc[:, 'Datetime_ini'] = pd.to_datetime(ordens['data_ini'] + ' ' + ordens['hora_ini'], format = 'mixed', errors='coerce')
 ordens.loc[:,'Datetime_fim'] = pd.to_datetime(ordens['data_fim'] + ' ' + ordens['hora_fim'], format = 'mixed', errors='coerce')
@@ -17,6 +36,20 @@ ordens.loc[:, 'delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime
 ordens.loc[:, 'delta_time_hours'] = ordens['delta_time_seconds'] / 3600
 ordens.loc[:,'delta_time_min'] = ordens['delta_time_seconds']/60
 st.image('logo.png', width= 150)
+ordens.loc[ordens['estacao'] == 'CCNC 001', 'estacao'] = 'CNC 001'
+ordens.loc[ordens['estacao'] == 'PLM001', 'estacao'] = 'PLM 001'
+ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], format = 'mixed', errors='coerce')
+ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], format = 'mixed', errors='coerce')
+ordens["Ano"] = ordens["data_ini"].dt.year.astype('Int64') 
+ordens["Mes"] = ordens["data_ini"].dt.month.astype('Int64')
+
+
+ordens['delta_dia'] = (ordens['data_fim'] - ordens['data_ini']).dt.days
+    
+ordens['weekends_count'] = ordens.apply(lambda row: count_sundays(row['data_ini'], row['data_fim']), axis=1)
+
+if (ordens['delta_dia'] != 0).any():
+    ordens['delta_time_hours'] = ordens['delta_time_hours'] - (ordens['delta_dia']*14) - (ordens['weekends_count']*24) 
 
 
 tab1, tab2, tab3 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "MÉDIA POR PEÇA"])
@@ -24,13 +57,11 @@ with tab1:
     col6, col7, col8 = st.columns(3)
     with col6:
         estacao = st.selectbox("Estação", ordens["estacao"].sort_values().unique(), index= 0,placeholder ='Escolha uma opção')
-    ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], format = 'mixed', errors='coerce')
-    ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], format = 'mixed', errors='coerce')
+    
+    ordens = ordens[~((ordens['id'] == 17854) | (ordens['id'] == 17856) | (ordens['id'] == 17858))]
+    
     ordens=ordens.sort_values("data_ini")
-    ordens["Ano"] = ordens["data_ini"].dt.year.astype('Int64') 
-    ordens["Mes"] = ordens["data_ini"].dt.month.astype('Int64')
-    ordens["Dia_ini"] = ordens["data_ini"].dt.day.astype('Int64') 
-    ordens["Dia_fim"] = ordens["data_fim"].dt.day.astype('Int64')
+
     with col7:
         target_month = st.selectbox("Mês", ordens["Mes"].sort_values().unique(), index= 0,placeholder ='Escolha uma opção')
     with col8:
@@ -42,10 +73,6 @@ with tab1:
     df_filtrado = df_filtrado_year[df_filtrado_year['Datetime_ini'].dt.month == target_month]
     hora_esperada_de_trabalho = 200
     num_entries = df_filtrado.shape[0]
-    df_filtrado['delta_dia'] = df_filtrado['Dia_fim'] - df_filtrado['Dia_ini']
-    
-    if (df_filtrado['delta_dia'] != 0).any():
-        df_filtrado['delta_time_hours'] = df_filtrado['delta_time_hours'] - (df_filtrado['delta_dia']*14) 
     
     total_de_horas = round(df_filtrado['delta_time_hours'].sum(),1)
     percent_horas = round((total_de_horas/hora_esperada_de_trabalho) * 100, 1)
@@ -60,15 +87,12 @@ with tab1:
     col3.metric("Média", f"{media}H")
    
     col11,col12 = st.columns([0.8,0.2])
-    df_filtrado_year['delta_dia'] = df_filtrado_year['Dia_fim'] - df_filtrado_year['Dia_ini']
-    if (df_filtrado_year['delta_dia'] != 0).any():
-        df_filtrado_year['delta_time_hours'] = df_filtrado_year['delta_time_hours'] - (df_filtrado_year['delta_dia']*14) 
-    
+
     ordem_2 = df_filtrado_year.groupby(['estacao', df_filtrado_year['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
     ordem_2.rename(columns = {'delta_time_hours':'Tempo de uso total (H)'}, inplace = True)
     ordem_2.rename(columns = {'Datetime_ini': 'Mês'}, inplace = True)
     
-    fig2 = px.bar(ordem_2, x = 'Mês', y = round((ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho)*100,2),title= 'Eficiência Mensal',text_auto='.2s', width=1300)
+    fig2 = px.bar(ordem_2, x = 'Mês', y = round((ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho)*100,2),title= 'Eficiência Mensal',text_auto='.3s', width=1300)
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False)
     fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.5, title_y = 0.95,title_xanchor = 'center')
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
@@ -90,47 +114,40 @@ with tab2:
     quant = pedido['quant_a_fat'].iloc[0]
     filtro_df = pedido['ordem']
     ordem = ordens[ordens['ordem'].isin(filtro_df)]
+    
+    ordem.loc[ordem['estacao'].str.contains('SRC', na=False), 'estacao'] = 'Corte-Serra'
+    ordem.loc[ordem['estacao'].str.contains('SFH', na=False), 'estacao'] = 'Corte-Serra'
+    ordem.loc[ordem['estacao'].str.contains('TCNV', na=False), 'estacao'] = 'Torno convencional'
+    ordem.loc[ordem['estacao'].str.contains('TCNC', na=False), 'estacao'] = 'Torno CNC'
+    ordem.loc[ordem['estacao'].str.contains('FRZ', na=False), 'estacao'] = 'Fresadora convencional'
+    ordem.loc[ordem['estacao'].str.contains('CNC', na=False), 'estacao'] = 'Fresadora CNC'
+    ordem.loc[ordem['estacao'].str.contains('PLM', na=False), 'estacao'] = 'Corte-Plasma'
+    ordem.loc[ordem['estacao'].str.contains('MCL', na=False), 'estacao'] = 'Corte-Laser'
+    ordem.loc[ordem['estacao'].str.contains('GLT', na=False), 'estacao'] = 'Corte-Guilhotina'
+    ordem.loc[ordem['estacao'].str.contains('DHCNC', na=False), 'estacao'] = 'Dobra'
+    ordem.loc[ordem['estacao'].str.contains('MQS', na=False), 'estacao'] = 'Soldagem'
+    
     soma_por_estacao = ordem.groupby('estacao')['delta_time_hours'].sum().reset_index().round(2)
     soma_por_estacao.rename(columns={'delta_time_hours': 'Tempo de uso total (H)'}, inplace=True)
     soma_por_estacao.rename(columns={'estacao': 'Estação de Trabalho'}, inplace=True)
-    soma_por_estacao['Tempo de uso por Peça (min)'] = round((soma_por_estacao['Tempo de uso total (H)']/quant)*60,2)
-    total_de_minutos_peca = round(soma_por_estacao['Tempo de uso por Peça (min)'].sum(),2)
     total_de_horas_pedido = round(soma_por_estacao['Tempo de uso total (H)'].sum(),2)
+
 
     fig = px.pie(soma_por_estacao, values='Tempo de uso total (H)', names='Estação de Trabalho', title='Proporção de Tempo de Uso por Máquina em Cada Pedido', width=800, height=500)
     fig.update_layout(title_yref='container',title_xanchor = 'center',title_x = 0.43, title_y = 0.95, legend=dict(font=dict(size=18)),font=dict(size=20), title_font=dict(size=20))
     col4.plotly_chart(fig, use_container_width=True)
-    nova_linha = {'Estação de Trabalho': 'Total', 'Tempo de uso total (H)': total_de_horas_pedido,'Tempo de uso por Peça (min)': total_de_minutos_peca}
+    nova_linha = {'Estação de Trabalho': 'Total', 'Tempo de uso total (H)': total_de_horas_pedido}
     soma_por_estacao = pd.concat([soma_por_estacao, pd.DataFrame([nova_linha])], ignore_index=True)
+    
+    col17,col18 = st.columns([0.9,0.1])
+    g = sns.catplot(data=soma_por_estacao, x="Estação de Trabalho", y="Tempo de uso total (H)",hue = 'Estação de Trabalho', height=5, kind="strip",aspect=2)    
+    col17.pyplot(g)
+    
+    soma_por_estacao['Tempo de uso total (H)'] = soma_por_estacao['Tempo de uso total (H)'].apply(convert_to_HM)
+    
     with col5:
         st.markdown(f"<h1 style='font-size: 20px;'>Tabela de Horas por Estação no PV {target_pv}/Número de peças é {quant}</h1>", unsafe_allow_html=True)
     col5.dataframe(soma_por_estacao, width= 500,hide_index=True)
     with col10:
         st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
-
-with tab3:
-    col12, col13, col14 = st.columns(3)
-    with col12:
-        target_peca = st.selectbox("Peça", pedidos["descricao"].sort_values().unique(), index= 0,placeholder ='Escolha uma opção')
-    pedidos_cleaned = pedidos.dropna(subset=['descricao'])
-    peca = pedidos_cleaned[pedidos_cleaned['descricao'].str.contains(target_peca)]
-    filtro_df_2 = peca['ordem']
-    ordem_peca = ordens[ordens['ordem'].isin(filtro_df_2)]
-    peca_estacao = ordem_peca.groupby('estacao')['delta_time_min'].sum().reset_index().round(2)
-    total = round(peca_estacao['delta_time_min'].sum(),2)
-
-    average_minutes = round(peca_estacao['delta_time_min'] / len(peca_estacao['estacao']),0)
-    peca_estacao['time_delta'] = average_minutes.apply(lambda x: timedelta(minutes=x))
-    base_datetime = pd.Timestamp.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    peca_estacao['result_datetime'] = base_datetime + peca_estacao['time_delta']
-    peca_estacao['Tempo Médio por '] = peca_estacao['result_datetime'].dt.strftime('%H:%M')
-    peca_estacao.drop('time_delta', axis=1, inplace=True)
-    peca_estacao.drop('result_datetime', axis=1, inplace=True)
-    media_2 = round(total / len(peca_estacao['estacao']),2)
-    media_3 = round(media_2/60,2)
-    col13.metric("Tempo médio para a fabricação em Horas", f"{media_3}H")
-    col14.metric("Tempo médio para a fabricação em Minutos", f"{media_2}min")
-    col15, col16 = st.columns([0.90,0.1])
-    peca_estacao.drop('delta_time_min', axis = 1, inplace= True)
-    peca_estacao.rename(columns={'estacao': 'Estação de Trabalho'}, inplace=True)
-    col15.dataframe(peca_estacao, width= 1500,hide_index=True)
+    
