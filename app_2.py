@@ -29,9 +29,11 @@ def adjust_delta_time(row):
 def adjust_delta_time_hours(row):
     if row['delta_dia'] != 0:
         row['delta_time_hours'] -= (row['delta_dia'] * 14) + (row['weekends_count'] * 24)
+    else:
+        row['delta_time_hours'] -= (row['weekends_count'] * 24)
     return row
 
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide")   
 st.image('logo.png', width= 150)
 
 ordens = pd.read_csv('ordens (4).csv', sep = ',')
@@ -60,8 +62,6 @@ ordens['weekends_count'] = ordens.apply(lambda row: count_sundays(row['data_ini'
 
 ordens['hora_fim'] = pd.to_datetime(ordens['hora_fim'], format='%H:%M:%S').dt.time
 ordens['hora_ini'] = pd.to_datetime(ordens['hora_ini'], format='%H:%M:%S').dt.time
-# if (ordens['delta_dia'] != 0).any():
-#     ordens['delta_time_hours'] = ordens['delta_time_hours'] - (ordens['delta_dia']*14) - (ordens['weekends_count']*24) 
 
 ordens = ordens.apply(adjust_delta_time_hours, axis=1)
 ordens = ordens.apply(adjust_delta_time, axis=1)
@@ -188,9 +188,16 @@ with tab2:
                 soma_por_estacao.loc[soma_por_estacao['Estação de Trabalho'] == estacao, 'Tempo esperado no Orçamento'] = tempo
     
     col17,col18 = st.columns([0.9,0.1])
-    g = sns.catplot(data=soma_por_estacao, x="Estação de Trabalho", y="Tempo de uso total (H:M)",hue = 'Estação de Trabalho', height=5, kind="strip",aspect=2)    
-    col17.pyplot(g)
+    # g = sns.catplot(data=soma_por_estacao, x="Estação de Trabalho", y="Tempo de uso total (H:M)",hue = 'Estação de Trabalho', height=5, kind="strip",aspect=2)    
+    # col17.pyplot(g)
+    x_rmin = (min(ordem["Datetime_ini"]))
+    x_rmax = (max(ordem["Datetime_fim"]))
     
+    x_range = [x_rmin, x_rmax]
+    timeline = px.timeline(ordem, x_start="Datetime_ini", x_end="Datetime_fim", y="estacao", range_x=x_range)
+
+    col17.plotly_chart(timeline, use_container_width=True)
+
     soma_por_estacao['Tempo de uso total (H:M)'] = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_HM)
     
     with col5:
