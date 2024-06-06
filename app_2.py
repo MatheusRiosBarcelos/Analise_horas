@@ -190,13 +190,13 @@ with tab2:
     col17,col18 = st.columns([0.9,0.1])
     # g = sns.catplot(data=soma_por_estacao, x="Estação de Trabalho", y="Tempo de uso total (H:M)",hue = 'Estação de Trabalho', height=5, kind="strip",aspect=2)    
     # col17.pyplot(g)
-    x_rmin = (min(ordem["Datetime_ini"]))
-    x_rmax = (max(ordem["Datetime_fim"]))
+    # x_rmin = (min(ordem["Datetime_ini"]))
+    # x_rmax = (max(ordem["Datetime_fim"]))
     
-    x_range = [x_rmin, x_rmax]
-    timeline = px.timeline(ordem, x_start="Datetime_ini", x_end="Datetime_fim", y="estacao", range_x=x_range)
+    # x_range = [x_rmin, x_rmax]
+    # timeline = px.timeline(ordem, x_start="Datetime_ini", x_end="Datetime_fim", y="estacao", range_x=x_range)
 
-    col17.plotly_chart(timeline, use_container_width=True)
+    # col17.plotly_chart(timeline, use_container_width=True)
 
     soma_por_estacao['Tempo de uso total (H:M)'] = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_HM)
     
