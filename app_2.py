@@ -57,6 +57,7 @@ ordens.loc[:, 'delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime
 ordens.loc[:, 'delta_time_hours'] = ordens['delta_time_seconds'] / 3600
 ordens.loc[:,'delta_time_min'] = ordens['delta_time_seconds']/60
 
+
 ordens.loc[ordens['estacao'] == 'CCNC 001', 'estacao'] = 'CNC 001'
 ordens.loc[ordens['estacao'] == 'CCNC001', 'estacao'] = 'CNC 001'
 ordens.loc[ordens['estacao'] == 'CCNC01', 'estacao'] = 'CNC 001'
@@ -199,15 +200,6 @@ with tab2:
                 soma_por_estacao.loc[soma_por_estacao['Estação de Trabalho'] == estacao, 'Tempo esperado no Orçamento'] = tempo
     
     col17,col18 = st.columns([0.9,0.1])
-    # g = sns.lineplot(data=soma_por_estacao, x="Estação de Trabalho", y="Tempo de uso total (H:M)",hue = 'Estação de Trabalho', height=5, kind="strip",aspect=2)    
-    # col17.pyplot(g)
-    # x_rmin = (min(ordem["Datetime_ini"]))
-    # x_rmax = (max(ordem["Datetime_fim"]))
-    
-    # x_range = [x_rmin, x_rmax]
-    # timeline = px.timeline(ordem, x_start="Datetime_ini", x_end="Datetime_fim", y="estacao", range_x=x_range)
-
-    # col17.plotly_chart(timeline, use_container_width=True)
 
     soma_por_estacao['Tempo de uso total (H:M)'] = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_HM)
     
@@ -216,3 +208,37 @@ with tab2:
     col5.dataframe(soma_por_estacao, width= 500,hide_index=True)
     with col10:
         st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
+
+with tab3:
+    col20,col21 = st.columns([0.9,0.1])
+    codprod_target = st.text_input("Código do Produto")
+    number_parts = st.number_input("Quantas peças são", value=int(0), placeholder="Type a number...")
+
+    pedido_cod = pedidos[pedidos['codprod'].str.contains(codprod_target, na= False)]
+    
+    filtro_df_cod = pedido_cod['ordem']
+    ordem_cod = ordens[ordens['ordem'].isin(filtro_df_cod)]
+    merged_df = pd.merge(pedido_cod, ordem_cod, on='ordem', how='left')
+    merged_df['delta_time_hours'] = merged_df['delta_time_hours'] / merged_df['quant_a_fat']
+    print(merged_df.head(5))
+    merged_df.loc[merged_df['estacao'].str.contains('SRC', na=False), 'estacao'] = 'Corte-Serra'
+    merged_df.loc[merged_df['estacao'].str.contains('SFH', na=False), 'estacao'] = 'Corte-Serra'
+    merged_df.loc[merged_df['estacao'].str.contains('TCNV', na=False), 'estacao'] = 'Torno convencional'
+    merged_df.loc[merged_df['estacao'].str.contains('TCNC', na=False), 'estacao'] = 'Torno CNC'
+    merged_df.loc[merged_df['estacao'].str.contains('FRZ', na=False), 'estacao'] = 'Fresadora convencional'
+    merged_df.loc[merged_df['estacao'].str.contains('CNC', na=False), 'estacao'] = 'Fresadora CNC'
+    merged_df.loc[merged_df['estacao'].str.contains('PLM', na=False), 'estacao'] = 'Corte-Plasma'
+    merged_df.loc[merged_df['estacao'].str.contains('MCL', na=False), 'estacao'] = 'Corte-Laser'
+    merged_df.loc[merged_df['estacao'].str.contains('GLT', na=False), 'estacao'] = 'Corte-Guilhotina'
+    merged_df.loc[merged_df['estacao'].str.contains('DHCNC', na=False), 'estacao'] = 'Dobra'
+    merged_df.loc[merged_df['estacao'].str.contains('MQS', na=False), 'estacao'] = 'Soldagem'
+    merged_df = merged_df.dropna(subset=['estacao', 'delta_time_hours'])
+    merged_df = merged_df.groupby('estacao')['delta_time_hours'].sum().reset_index().round(2)
+    # merged_df['delta_time_hours'] = pd.to_numeric(merged_df['delta_time_hours'], errors='coerce')
+    merged_df['delta_time_hours'] = merged_df['delta_time_hours'] * number_parts
+    merged_df['delta_time_hours'] = merged_df.apply(lambda row: convert_to_HM(row['delta_time_hours']), axis=1)
+
+
+    col20.dataframe(merged_df, width= 500,hide_index=True)
+    
+
