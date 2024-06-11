@@ -13,19 +13,19 @@ def convert_to_HM(x):
     # Return in "H:M" format
     return f"{h}:{m:02d}"
 
-def count_sundays(start_date, end_date):
-    if pd.isna(start_date) or pd.isna(end_date):
-        return 0
-    all_dates = pd.date_range(start=start_date, end=end_date)
-    sundays = all_dates[all_dates.weekday == 6]
-    return len(sundays)
-
-# def count_weekend_days(start_date, end_date):
+# def count_sundays(start_date, end_date):
 #     if pd.isna(start_date) or pd.isna(end_date):
 #         return 0
 #     all_dates = pd.date_range(start=start_date, end=end_date)
-#     weekends = all_dates[(all_dates.weekday == 5) | (all_dates.weekday == 6)]
-#     return len(weekends)
+#     sundays = all_dates[all_dates.weekday == 6]
+#     return len(sundays)
+
+def count_weekend_days(start_date, end_date):
+    if pd.isna(start_date) or pd.isna(end_date):
+        return 0
+    all_dates = pd.date_range(start=start_date, end=end_date)
+    weekends = all_dates[(all_dates.weekday == 5) | (all_dates.weekday == 6)]
+    return len(weekends)
 
 def adjust_delta_time(row):
     if pd.notna(row['hora_ini']) and pd.notna(row['hora_fim']):
@@ -68,7 +68,7 @@ ordens["Ano"] = ordens["data_ini"].dt.year.astype('Int64')
 ordens["Mes"] = ordens["data_ini"].dt.month.astype('Int64')
 ordens['delta_dia'] = (ordens['data_fim'] - ordens['data_ini']).dt.days
     
-ordens['weekends_count'] = ordens.apply(lambda row: count_sundays(row['data_ini'], row['data_fim']), axis=1)
+ordens['weekends_count'] = ordens.apply(lambda row: count_weekend_days(row['data_ini'], row['data_fim']), axis=1)
 
 ordens['hora_fim'] = pd.to_datetime(ordens['hora_fim'], format='%H:%M:%S').dt.time
 ordens['hora_ini'] = pd.to_datetime(ordens['hora_ini'], format='%H:%M:%S').dt.time
