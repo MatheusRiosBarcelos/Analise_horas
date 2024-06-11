@@ -20,18 +20,25 @@ def count_sundays(start_date, end_date):
     sundays = all_dates[all_dates.weekday == 6]
     return len(sundays)
 
+# def count_weekend_days(start_date, end_date):
+#     if pd.isna(start_date) or pd.isna(end_date):
+#         return 0
+#     all_dates = pd.date_range(start=start_date, end=end_date)
+#     weekends = all_dates[(all_dates.weekday == 5) | (all_dates.weekday == 6)]
+#     return len(weekends)
+
 def adjust_delta_time(row):
     if pd.notna(row['hora_ini']) and pd.notna(row['hora_fim']):
-        if (row['data_fim'].day == row['data_ini'].day and row['hora_fim'] > pd.to_datetime('12:30:00').time() and row['hora_ini'] < pd.to_datetime('11:30:00').time()):
-            row['delta_time_hours'] -= 1
+        if (row['delta_dia'] == 0 and row['hora_fim'] > pd.to_datetime('12:30:00').time() and row['hora_ini'] < pd.to_datetime('11:30:00').time()):
+            row['delta_time_hours']  = row['delta_time_hours'] - 1
     return row
 
 def adjust_delta_time_hours(row):
     if row['delta_dia'] != 0:
-        row['delta_time_hours'] -= (row['delta_dia'] * 14) + (row['weekends_count'] * 24)
-    else:
-        row['delta_time_hours'] -= (row['weekends_count'] * 24)
+        row['delta_time_hours'] = row['delta_time_hours'] - ((row['delta_dia']-row['weekends_count']) * 14) - (row['weekends_count'] * 24)
     return row
+
+
 
 st.set_page_config(layout="wide")   
 st.image('logo.png', width= 150)
@@ -39,7 +46,7 @@ st.image('logo.png', width= 150)
 ordens = pd.read_csv('ordens (4).csv', sep = ',')
 pedidos = pd.read_csv('pedidos (1).csv', sep = ',')
 orc = pd.read_csv('orcamento_csv.csv', sep=';')
-ordens.iloc[2860, ordens.columns.get_loc('data_fim')] = '2024-03-04'   #posso tirar em breve
+
 ordens['ordem'] = ordens['ordem'].fillna(0)
 ordens['data_ini'] = ordens['data_ini'].fillna(0)
 ordens['hora_ini'] = ordens['hora_ini'].fillna(0)
@@ -51,7 +58,10 @@ ordens.loc[:, 'delta_time_hours'] = ordens['delta_time_seconds'] / 3600
 ordens.loc[:,'delta_time_min'] = ordens['delta_time_seconds']/60
 
 ordens.loc[ordens['estacao'] == 'CCNC 001', 'estacao'] = 'CNC 001'
+ordens.loc[ordens['estacao'] == 'CCNC001', 'estacao'] = 'CNC 001'
+ordens.loc[ordens['estacao'] == 'CCNC01', 'estacao'] = 'CNC 001'
 ordens.loc[ordens['estacao'] == 'PLM001', 'estacao'] = 'PLM 001'
+ordens.loc[ordens['estacao'] == 'PLM 01', 'estacao'] = 'PLM 001'
 ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], format = 'mixed', errors='coerce')
 ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], format = 'mixed', errors='coerce')
 ordens["Ano"] = ordens["data_ini"].dt.year.astype('Int64') 
@@ -90,6 +100,7 @@ with tab1:
     num_entries = df_filtrado.shape[0]
     
     total_de_horas = round(df_filtrado['delta_time_hours'].sum(),1)
+    
     percent_horas = round((total_de_horas/hora_esperada_de_trabalho) * 100, 1)
     
     media = np.divide(total_de_horas,num_entries,out=np.zeros_like(total_de_horas), where=num_entries!=0).round(1)
@@ -188,7 +199,7 @@ with tab2:
                 soma_por_estacao.loc[soma_por_estacao['Estação de Trabalho'] == estacao, 'Tempo esperado no Orçamento'] = tempo
     
     col17,col18 = st.columns([0.9,0.1])
-    # g = sns.catplot(data=soma_por_estacao, x="Estação de Trabalho", y="Tempo de uso total (H:M)",hue = 'Estação de Trabalho', height=5, kind="strip",aspect=2)    
+    # g = sns.lineplot(data=soma_por_estacao, x="Estação de Trabalho", y="Tempo de uso total (H:M)",hue = 'Estação de Trabalho', height=5, kind="strip",aspect=2)    
     # col17.pyplot(g)
     # x_rmin = (min(ordem["Datetime_ini"]))
     # x_rmax = (max(ordem["Datetime_fim"]))
