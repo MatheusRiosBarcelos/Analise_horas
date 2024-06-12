@@ -5,20 +5,10 @@ from datetime  import datetime as dt , timedelta
 import seaborn as sns
 import numpy as np
 def convert_to_HM(x):
-    # Convert to float
     hours = float(x)
-    # Separate the integer part (hours) and the fractional part (minutes)
     h = int(hours)
     m = int((hours - h) * 60)
-    # Return in "H:M" format
     return f"{h}:{m:02d}"
-
-# def count_sundays(start_date, end_date):
-#     if pd.isna(start_date) or pd.isna(end_date):
-#         return 0
-#     all_dates = pd.date_range(start=start_date, end=end_date)
-#     sundays = all_dates[all_dates.weekday == 6]
-#     return len(sundays)
 
 def count_weekend_days(start_date, end_date):
     if pd.isna(start_date) or pd.isna(end_date):
@@ -38,29 +28,40 @@ def adjust_delta_time_hours(row):
         row['delta_time_hours'] = row['delta_time_hours'] - ((row['delta_dia']-row['weekends_count']) * 14) - (row['weekends_count'] * 24)
     return row
 
-
 st.set_page_config(layout="wide")   
 st.image('logo.png', width= 150)
 
 ordens = pd.read_csv('ordens (4).csv', sep = ',')
 pedidos = pd.read_csv('pedidos (1).csv', sep = ',')
 orc = pd.read_csv('orcamento_csv.csv', sep=';')
+
 ordens = ordens[ordens['estacao'] != 'Selecione...']
+
 ordens['ordem'] = ordens['ordem'].fillna(0)
 ordens['data_ini'] = ordens['data_ini'].fillna(0)
 ordens['hora_ini'] = ordens['hora_ini'].fillna(0)
 ordens['ordem'] = ordens['ordem'].astype(int)
+
 ordens.loc[:, 'Datetime_ini'] = pd.to_datetime(ordens['data_ini'] + ' ' + ordens['hora_ini'], format = 'mixed', errors='coerce')
 ordens.loc[:,'Datetime_fim'] = pd.to_datetime(ordens['data_fim'] + ' ' + ordens['hora_fim'], format = 'mixed', errors='coerce')
 ordens.loc[:, 'delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime_ini']).dt.total_seconds()
 ordens.loc[:, 'delta_time_hours'] = ordens['delta_time_seconds'] / 3600
 ordens.loc[:,'delta_time_min'] = ordens['delta_time_seconds']/60
 
+ordens['estacao'] = ordens['estacao'].fillna('a')
+
+mqs = (ordens['estacao'].str.contains('MQS'))
+ordens.loc[mqs,'estacao'] = 'Soldagem'
+ordens.loc[ordens['estacao'].str.contains('LASER'),'estacao'] = 'MCL 001'
+ordens.loc[ordens['estacao'].str.contains('DGQ'),'estacao'] = 'QUALIDADE'
+ordens.loc[ordens['estacao'] == 'FRZ 033', 'estacao'] = 'FRZ 003'
+ordens.loc[ordens['estacao'] == 'FRZ003', 'estacao'] = 'FRZ 003'
 ordens.loc[ordens['estacao'] == 'CCNC 001', 'estacao'] = 'CNC 001'
 ordens.loc[ordens['estacao'] == 'CCNC001', 'estacao'] = 'CNC 001'
 ordens.loc[ordens['estacao'] == 'CCNC01', 'estacao'] = 'CNC 001'
 ordens.loc[ordens['estacao'] == 'PLM001', 'estacao'] = 'PLM 001'
 ordens.loc[ordens['estacao'] == 'PLM 01', 'estacao'] = 'PLM 001'
+
 ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], format = 'mixed', errors='coerce')
 ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], format = 'mixed', errors='coerce')
 ordens["Ano"] = ordens["data_ini"].dt.year.astype('Int64') 
@@ -112,6 +113,7 @@ with tab1:
     delta_1 = round(percent_horas - 100, 1)
     
     col1, col2, col3 = st.columns(3)
+
     col1.metric(f"Total de Horas da Máquina em {target_month}-{target_year}", f"{total_de_horas}H", f'{round(total_de_horas-200,1)}H')
     col2.metric('Eficiência (%)', f'{percent_horas}%', f'{delta_1}%')
     col3.metric("Média", f"{media}H")
@@ -126,6 +128,7 @@ with tab1:
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False)
     fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.5, title_y = 0.95,title_xanchor = 'center')
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
+    
     col11.plotly_chart(fig2)
 
 with tab2:
@@ -161,6 +164,7 @@ with tab2:
     soma_por_estacao = ordem.groupby('estacao')['delta_time_hours'].sum().reset_index().round(2)
     soma_por_estacao.rename(columns={'delta_time_hours': 'Tempo de uso total (H:M)'}, inplace=True)
     soma_por_estacao.rename(columns={'estacao': 'Estação de Trabalho'}, inplace=True)
+    
     total_de_horas_pedido = round(soma_por_estacao['Tempo de uso total (H:M)'].sum(),2)
 
     fig = px.pie(soma_por_estacao, values='Tempo de uso total (H:M)', names='Estação de Trabalho', title='Proporção de Tempo de Uso por Máquina em Cada Pedido', width=800, height=500)
