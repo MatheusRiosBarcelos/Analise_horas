@@ -39,14 +39,13 @@ def adjust_delta_time_hours(row):
     return row
 
 
-
 st.set_page_config(layout="wide")   
 st.image('logo.png', width= 150)
 
 ordens = pd.read_csv('ordens (4).csv', sep = ',')
 pedidos = pd.read_csv('pedidos (1).csv', sep = ',')
 orc = pd.read_csv('orcamento_csv.csv', sep=';')
-
+ordens = ordens[ordens['estacao'] != 'Selecione...']
 ordens['ordem'] = ordens['ordem'].fillna(0)
 ordens['data_ini'] = ordens['data_ini'].fillna(0)
 ordens['hora_ini'] = ordens['hora_ini'].fillna(0)
@@ -57,7 +56,6 @@ ordens.loc[:, 'delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime
 ordens.loc[:, 'delta_time_hours'] = ordens['delta_time_seconds'] / 3600
 ordens.loc[:,'delta_time_min'] = ordens['delta_time_seconds']/60
 
-
 ordens.loc[ordens['estacao'] == 'CCNC 001', 'estacao'] = 'CNC 001'
 ordens.loc[ordens['estacao'] == 'CCNC001', 'estacao'] = 'CNC 001'
 ordens.loc[ordens['estacao'] == 'CCNC01', 'estacao'] = 'CNC 001'
@@ -67,16 +65,21 @@ ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], format = 'mixed', errors
 ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], format = 'mixed', errors='coerce')
 ordens["Ano"] = ordens["data_ini"].dt.year.astype('Int64') 
 ordens["Mes"] = ordens["data_ini"].dt.month.astype('Int64')
-ordens['delta_dia'] = (ordens['data_fim'] - ordens['data_ini']).dt.days
-    
-ordens['weekends_count'] = ordens.apply(lambda row: count_weekend_days(row['data_ini'], row['data_fim']), axis=1)
 
+ordens['delta_dia'] = (ordens['data_fim'] - ordens['data_ini']).dt.days
 ordens['hora_fim'] = pd.to_datetime(ordens['hora_fim'], format='%H:%M:%S').dt.time
 ordens['hora_ini'] = pd.to_datetime(ordens['hora_ini'], format='%H:%M:%S').dt.time
 
+midnight = ordens['Datetime_fim'].dt.normalize()
+seven_am = midnight + pd.Timedelta(hours=7) 
+condition = ((ordens['delta_dia'] == 1) & (ordens['Datetime_ini'] < midnight) & (ordens['Datetime_fim'] >= midnight) & (ordens['Datetime_fim'] <= seven_am))
+if condition.any():
+    ordens.loc[condition, 'delta_dia'] = 0
+
+ordens['weekends_count'] = ordens.apply(lambda row: count_weekend_days(row['data_ini'], row['data_fim']), axis=1)
+
 ordens = ordens.apply(adjust_delta_time_hours, axis=1)
 ordens = ordens.apply(adjust_delta_time, axis=1)
-
 
 tab1, tab2, tab3 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "MÉDIA POR PEÇA"])
 with tab1:
@@ -210,7 +213,7 @@ with tab2:
         st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
 
 with tab3:
-    col20,col21 = st.columns([0.9,0.1])
+    col20,col21 = st.columns([0.5,0.5])
     codprod_target = st.text_input("Código do Produto")
     number_parts = st.number_input("Quantas peças são", value=int(0), placeholder="Type a number...")
 
@@ -220,7 +223,6 @@ with tab3:
     ordem_cod = ordens[ordens['ordem'].isin(filtro_df_cod)]
     merged_df = pd.merge(pedido_cod, ordem_cod, on='ordem', how='left')
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'] / merged_df['quant_a_fat']
-    print(merged_df.head(5))
     merged_df.loc[merged_df['estacao'].str.contains('SRC', na=False), 'estacao'] = 'Corte-Serra'
     merged_df.loc[merged_df['estacao'].str.contains('SFH', na=False), 'estacao'] = 'Corte-Serra'
     merged_df.loc[merged_df['estacao'].str.contains('TCNV', na=False), 'estacao'] = 'Torno convencional'
@@ -232,13 +234,17 @@ with tab3:
     merged_df.loc[merged_df['estacao'].str.contains('GLT', na=False), 'estacao'] = 'Corte-Guilhotina'
     merged_df.loc[merged_df['estacao'].str.contains('DHCNC', na=False), 'estacao'] = 'Dobra'
     merged_df.loc[merged_df['estacao'].str.contains('MQS', na=False), 'estacao'] = 'Soldagem'
+    
+    index_of_first_occurrence = merged_df[((merged_df['matriz'] == 'SIM') & (~merged_df['descricao'].isna()))].index[0]
+    descricao_2 = merged_df.loc[index_of_first_occurrence, 'descricao']
+
     merged_df = merged_df.dropna(subset=['estacao', 'delta_time_hours'])
-    merged_df = merged_df.groupby('estacao')['delta_time_hours'].sum().reset_index().round(2)
-    # merged_df['delta_time_hours'] = pd.to_numeric(merged_df['delta_time_hours'], errors='coerce')
+    merged_df = merged_df.groupby('estacao')['delta_time_hours'].mean().reset_index().round(2)
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'] * number_parts
+    merged_df['delta_time_hours'] = merged_df['delta_time_hours'].fillna(0)
     merged_df['delta_time_hours'] = merged_df.apply(lambda row: convert_to_HM(row['delta_time_hours']), axis=1)
 
-
     col20.dataframe(merged_df, width= 500,hide_index=True)
-    
 
+    with col21:
+        st.markdown(f"<h1 style='text-align: left;'>{descricao_2}</h1>", unsafe_allow_html=True)
