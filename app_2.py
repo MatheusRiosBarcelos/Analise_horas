@@ -82,7 +82,7 @@ ordens['weekends_count'] = ordens.apply(lambda row: count_weekend_days(row['data
 ordens = ordens.apply(adjust_delta_time_hours, axis=1)
 ordens = ordens.apply(adjust_delta_time, axis=1)
 
-tab1, tab2, tab3 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "MÉDIA POR PEÇA"])
+tab1, tab2, tab3 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS "])
 with tab1:
     col6, col7, col8 = st.columns(3)
     with col6:
@@ -153,7 +153,7 @@ with tab2:
     ordem.loc[ordem['estacao'].str.contains('TCNV', na=False), 'estacao'] = 'Torno convencional'
     ordem.loc[ordem['estacao'].str.contains('TCNC', na=False), 'estacao'] = 'Torno CNC'
     ordem.loc[ordem['estacao'].str.contains('FRZ', na=False), 'estacao'] = 'Fresadora convencional'
-    ordem.loc[ordem['estacao'].str.contains('CNC', na=False), 'estacao'] = 'Fresadora CNC'
+    ordem.loc[ordem['estacao'].str.contains('CNC 001', na=False), 'estacao'] = 'Fresadora CNC'
     ordem.loc[ordem['estacao'].str.contains('PLM', na=False), 'estacao'] = 'Corte-Plasma'
     ordem.loc[ordem['estacao'].str.contains('MCL', na=False), 'estacao'] = 'Corte-Laser'
     ordem.loc[ordem['estacao'].str.contains('GLT', na=False), 'estacao'] = 'Corte-Guilhotina'
@@ -250,6 +250,8 @@ with tab3:
 
     merged_df.rename(columns={'delta_time_hours': 'Tempo Médio de Uso (H:M)'}, inplace=True)
     merged_df.rename(columns={'estacao': 'Operação'}, inplace=True)
+
+    merged_df = merged_df[merged_df['Operação'] != 'ADM']
 
     col20.dataframe(merged_df, width= 500,hide_index=True)
 
