@@ -51,6 +51,7 @@ ordens['estacao'] = ordens['estacao'].fillna('a')
 
 mqs = (ordens['estacao'].str.contains('MQS'))
 ordens.loc[mqs,'estacao'] = 'Soldagem'
+ordens.loc[ordens['estacao'].str.contains('JPS'),'estacao'] = 'JATO'
 ordens.loc[ordens['estacao'].str.contains('LASER'),'estacao'] = 'MCL 001'
 ordens.loc[ordens['estacao'].str.contains('DGQ'),'estacao'] = 'QUALIDADE'
 ordens.loc[ordens['estacao'] == 'FRZ 033', 'estacao'] = 'FRZ 003'
@@ -85,7 +86,7 @@ tab1, tab2, tab3 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA D
 with tab1:
     col6, col7, col8 = st.columns(3)
     with col6:
-        estacao = st.selectbox("Estação", ordens["estacao"].sort_values().unique(), index= 0,placeholder ='Escolha uma opção')
+        estacao = st.selectbox("Estação", ordens["estacao"].sort_values().unique(), index= 4,placeholder ='Escolha uma opção')
     
     ordens = ordens[~((ordens['id'] == 17854) | (ordens['id'] == 17856) | (ordens['id'] == 17858))]
     
@@ -105,7 +106,7 @@ with tab1:
     
     total_de_horas = round(df_filtrado['delta_time_hours'].sum(),1)
     
-    percent_horas = round((total_de_horas/hora_esperada_de_trabalho) * 100, 1)
+    percent_horas = int((total_de_horas/hora_esperada_de_trabalho) * 100)
     
     media = np.divide(total_de_horas,num_entries,out=np.zeros_like(total_de_horas), where=num_entries!=0).round(1)
     
@@ -123,7 +124,7 @@ with tab1:
     ordem_2.rename(columns = {'delta_time_hours':'Tempo de uso total (H)'}, inplace = True)
     ordem_2.rename(columns = {'Datetime_ini': 'Mês'}, inplace = True)
 
-    fig2 = px.bar(ordem_2, x = 'Mês', y = round((ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho)*100,2),title= 'Eficiência Mensal',text_auto='.3s', width=1300)
+    fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= 'Eficiência Mensal',text_auto='.2s', width=1300)
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False)
     fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.5, title_y = 0.95,title_xanchor = 'center')
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
@@ -133,7 +134,7 @@ with tab1:
 with tab2:
     col9,col10 = st.columns([0.2,0.8])
     with col9:
-        target_pv = st.selectbox("Selecione o PV", pedidos["pedido"].sort_values().unique(),placeholder ='Escolha uma opção')
+        target_pv = st.selectbox("Selecione o PV", pedidos["pedido"].sort_values().unique(),index=1200,placeholder ='Escolha uma opção')
     
     col4, col5 = st.columns([3,2])
 
@@ -216,9 +217,9 @@ with tab2:
         st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
 
 with tab3:
-    col20,col21 = st.columns([0.5,0.5])
-    codprod_target = st.text_input("Código do Produto")
-    number_parts = st.number_input("Quantas peças são", value=int(0), placeholder="Type a number...")
+    col20,col21 = st.columns([0.3,0.7])
+    codprod_target = st.text_input("Código do Produto", value= '14303600')
+    number_parts = st.number_input("Quantas peças são", value=int(1), placeholder="Type a number...")
 
     pedido_cod = pedidos[pedidos['codprod'].str.contains(codprod_target, na= False)]
     
@@ -246,6 +247,9 @@ with tab3:
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'] * number_parts
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'].fillna(0)
     merged_df['delta_time_hours'] = merged_df.apply(lambda row: convert_to_HM(row['delta_time_hours']), axis=1)
+
+    merged_df.rename(columns={'delta_time_hours': 'Tempo Médio de Uso (H:M)'}, inplace=True)
+    merged_df.rename(columns={'estacao': 'Operação'}, inplace=True)
 
     col20.dataframe(merged_df, width= 500,hide_index=True)
 
