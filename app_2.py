@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime  import datetime as dt , timedelta
-import seaborn as sns
 import numpy as np
 def convert_to_HM(x):
     hours = float(x)
@@ -124,7 +123,7 @@ with tab1:
     ordem_2.rename(columns = {'delta_time_hours':'Tempo de uso total (H)'}, inplace = True)
     ordem_2.rename(columns = {'Datetime_ini': 'Mês'}, inplace = True)
 
-    fig2 = px.bar(ordem_2, x = 'Mês', y = round((ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho)*100,2),color='Mês',title= 'Eficiência Mensal',text_auto='.3s', width=1300)
+    fig2 = px.bar(ordem_2, x = 'Mês', y = round((ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho)*100,2),title= 'Eficiência Mensal',text_auto='.3s', width=1300)
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False)
     fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.5, title_y = 0.95,title_xanchor = 'center')
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
