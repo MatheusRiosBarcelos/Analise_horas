@@ -27,6 +27,13 @@ def adjust_delta_time_hours(row):
         row['delta_time_hours'] = row['delta_time_hours'] - ((row['delta_dia']-row['weekends_count']) * 14) - (row['weekends_count'] * 24)
     return row
 
+def get_quantity(cliente_name):
+    return np.where(
+        df_combinado['cliente'].str.contains(cliente_name, na=False),
+        df_combinado['Quantidade de Pedidos'],
+        0
+    ).sum()
+
 st.set_page_config(layout="wide")   
 st.image('logo.png', width= 150)
 
@@ -82,7 +89,7 @@ ordens['weekends_count'] = ordens.apply(lambda row: count_weekend_days(row['data
 ordens = ordens.apply(adjust_delta_time_hours, axis=1)
 ordens = ordens.apply(adjust_delta_time, axis=1)
 
-tab1, tab2, tab3 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS "])
+tab1, tab2, tab3, tab4 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ", 'ANÁLISE MENSAL DE PEDIDOS'])
 with tab1:
     col6, col7, col8 = st.columns(3)
     with col6:
@@ -93,9 +100,9 @@ with tab1:
     ordens=ordens.sort_values("data_ini")
 
     with col7:
-        target_month = st.selectbox("Mês", ordens["Mes"].sort_values().unique(), index= 0,placeholder ='Escolha uma opção')
+        target_month = st.selectbox("Mês", ordens["Mes"].sort_values().unique(),key=1, index= 0,placeholder ='Escolha uma opção')
     with col8:
-        target_year = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), index= 1 ,placeholder ='Escolha uma opção')
+        target_year = st.selectbox("Ano", ordens["Ano"].sort_values().unique(),key=2 ,index= 1 ,placeholder ='Escolha uma opção')
     
     new_df = ordens[ordens['estacao'] == estacao]
     
@@ -217,6 +224,7 @@ with tab2:
         st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
 
 with tab3:
+
     col20,col21 = st.columns([0.3,0.7])
     codprod_target = st.text_input("Código do Produto", value= '14303600')
     number_parts = st.number_input("Quantas peças são", value=int(1), placeholder="Type a number...")
@@ -257,3 +265,128 @@ with tab3:
 
     with col21:
         st.markdown(f"<h1 style='text-align: left;'>{descricao_2}</h1>", unsafe_allow_html=True)
+
+with tab4:
+    
+    col22,col23 = st.columns([0.5,0.5])
+    with col22:
+        target_month_2 = st.selectbox("Mês", ordens["Mes"].sort_values().unique(), key=3,index= 0,placeholder ='Escolha uma opção')
+    with col23:
+        target_year_2 = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), key=4,index= 1 ,placeholder ='Escolha uma opção')
+
+    cond = pedidos['descricao'].str.contains('COMPONENTE|POS.|POS-|ITEM|POS |PEÇA|BRACKET|CORONA RING', na=False)
+    pedidos.loc[cond, 'matriz'] = 'NAO'
+    pedidos.loc[~cond, 'matriz'] = 'SIM'
+
+    pedidos = pedidos[pedidos['matriz'] == 'SIM']
+    pedidos["entrega"] = pd.to_datetime(pedidos["entrega"], format = 'mixed', errors='coerce')
+    pedidos = pedidos[pedidos['entrega'].dt.month == 3]
+    pedidos = pedidos[pedidos['entrega'].dt.year == 2024]  
+
+    pedidos.loc[pedidos['cliente'].str.contains('WEG', na=False), 'cliente'] = 'WEG'
+    pedidos.loc[pedidos['cliente'].str.contains('GE', na=False), 'cliente'] = 'GE'
+
+    pedidos_clientes = pedidos.groupby('cliente').size().reset_index(name='Quantidade de Pedidos')
+    pedidos_clientes.sort_values(by='Quantidade de Pedidos', ascending=False, inplace=True)
+    pedidos_clientes.reset_index(drop=True, inplace=True)
+
+    total = pedidos_clientes['Quantidade de Pedidos'].sum()
+    
+    pedidos_clientes['Porcentagem (%)'] = ((pedidos_clientes['Quantidade de Pedidos'] / total) * 100).round(2)
+    
+    pedidos_pecas = pedidos.groupby('cliente')['quant_a_fat'].sum().reset_index()
+    pedidos_pecas.sort_values(by='quant_a_fat', ascending=False, inplace=True)
+    pedidos_pecas.reset_index(drop=True, inplace=True)
+    df_combinado = pedidos_clientes.merge(pedidos_pecas[['cliente', 'quant_a_fat']], on='cliente', how='left')
+    total_pecas = df_combinado['quant_a_fat'].sum()
+    df_combinado['Porcentagem de Peças (%)'] = ((df_combinado['quant_a_fat'] / total_pecas) * 100).round(2)
+    df_combinado.rename(columns={'quant_a_fat': 'Quantidade de peças por cliente'}, inplace=True)
+    df_combinado.sort_values(by= 'cliente', ascending=False, inplace= True)
+    col24,col25,col26,col27,col28,col29 = st.columns(6)
+
+    # weg = df_combinado.loc[df_combinado['cliente'].str.contains('WEG', na=False),'Quantidade de Pedidos']
+    # ge = df_combinado.loc[df_combinado['cliente'].str.contains('GE', na=False),'Quantidade de Pedidos']
+    # tav = df_combinado.loc[df_combinado['cliente'].str.contains('TAV', na=False),'Quantidade de Pedidos']
+    # hita = df_combinado.loc[df_combinado['cliente'].str.contains('HITA', na=False),'Quantidade de Pedidos']
+    # sha = df_combinado.loc[df_combinado['cliente'].str.contains('SHA', na=False),'Quantidade de Pedidos']
+    # pis = df_combinado.loc[df_combinado['cliente'].str.contains('PIS', na=False),'Quantidade de Pedidos']
+
+    weg = get_quantity('WEG')
+    ge = get_quantity('GE')
+    tav = get_quantity('TAV')
+    hita = get_quantity('HITA')
+    sha = get_quantity('SHA')
+    pis = get_quantity('PIS')
+
+    col24.metric(f"Peças Prodruzidas pela WEG", weg)
+    col25.metric(f"Peças Prodruzidas pela GE", ge)
+    col26.metric(f"Peças Prodruzidas pela TAVRIDA", tav)
+    col27.metric(f"Peças Prodruzidas pela HITACHI", hita)
+    col28.metric(f"Peças Prodruzidas pela SHAMAH", sha)
+    col29.metric(f"Peças Prodruzidas pela PISOM", pis)
+
+
+    # st.dataframe(df_combinado, use_container_width= True, hide_index=True)
+
+    fig3 = px.pie(df_combinado, values='Porcentagem (%)', names='cliente', title='Proporção de Pedidos Entregues por Cliente no Mês', width=800, height=500)
+    fig3.update_layout(title_yref='container',title_xanchor = 'center',title_x = 0.43, title_y = 0.95, legend=dict(font=dict(size=18)),font=dict(size=20), title_font=dict(size=20))
+
+    fig4 = px.pie(df_combinado, values='Porcentagem de Peças (%)', names='cliente', title='Proporção de Peças Entregues por Cliente no Mês', width=800, height=500)
+    fig4.update_layout(title_yref='container',title_xanchor = 'center',title_x = 0.43, title_y = 0.95, legend=dict(font=dict(size=18)),font=dict(size=20), title_font=dict(size=20))
+
+
+    col30,col31 = st.columns([0.5,0.5])
+
+    col30.plotly_chart(fig3, use_container_width=True)
+    col31.plotly_chart(fig4, use_container_width=True)
+
+
+
+
+st.markdown("""
+    <style>
+    /* Centralizar o conteúdo dentro do label do st.metric */
+    [data-testid="stMetricLabel"] {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Centralizar o conteúdo interno do label */
+    [data-testid="stMetricLabel"] div {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+    }
+
+    /* Centralizar o valor do st.metric */
+    [data-testid="stMetricValue"] {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Centralizar o conteúdo interno do valor */
+    [data-testid="stMetricValue"] div {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+    }
+    /* Centralizar o valor do st.metric */
+    [data-testid="stMetricDelta"] {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    /* Centralizar o conteúdo interno do valor */
+    [data-testid="stMetricDelta"] div {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+    }
+    </style>
+    """, unsafe_allow_html=True)
