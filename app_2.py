@@ -3,6 +3,8 @@ import pandas as pd
 import plotly.express as px
 from datetime  import datetime as dt , timedelta
 import numpy as np
+import plotly.graph_objects as go
+
 def convert_to_HM(x):
     hours = float(x)
     h = int(hours)
@@ -33,6 +35,20 @@ def get_quantity(cliente_name):
         df_combinado['Quantidade de Pedidos'],
         0
     ).sum()
+
+def create_pie_chart(df, values, names, title):
+    fig = px.pie(df, values=values, names=names, title=title, width=800, height=500,
+                 category_orders={names: ordem_das_categorias})
+    fig.update_layout(
+        title_yref='container',
+        title_xanchor='center',
+        title_x=0.43,
+        title_y=0.95,
+        legend=dict(font=dict(size=18)),
+        font=dict(size=20),
+        title_font=dict(size=20)
+    )
+    return fig
 
 st.set_page_config(layout="wide")   
 st.image('logo.png', width= 150)
@@ -88,6 +104,7 @@ ordens['weekends_count'] = ordens.apply(lambda row: count_weekend_days(row['data
 
 ordens = ordens.apply(adjust_delta_time_hours, axis=1)
 ordens = ordens.apply(adjust_delta_time, axis=1)
+ordens = ordens.loc[~(ordens[['delta_time_hours']] < 0).any(axis=1)]
 
 tab1, tab2, tab3, tab4 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ", 'ANÁLISE MENSAL DE PEDIDOS'])
 with tab1:
@@ -225,7 +242,7 @@ with tab2:
 
 with tab3:
 
-    col20,col21 = st.columns([0.3,0.7])
+    col20,col21 = st.columns([0.35,0.65])
     codprod_target = st.text_input("Código do Produto", value= '14303600')
     number_parts = st.number_input("Quantas peças são", value=int(1), placeholder="Type a number...")
 
@@ -253,13 +270,17 @@ with tab3:
     merged_df = merged_df.dropna(subset=['estacao', 'delta_time_hours'])
     merged_df = merged_df.groupby('estacao')['delta_time_hours'].mean().reset_index().round(2)
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'] * number_parts
-    merged_df['delta_time_hours'] = merged_df['delta_time_hours'].fillna(0)
-    merged_df['delta_time_hours'] = merged_df.apply(lambda row: convert_to_HM(row['delta_time_hours']), axis=1)
 
+    if 'delta_time_hours' in merged_df.columns:
+        if merged_df['delta_time_hours'].notnull().all():
+            # Aplicando a função de conversão
+            merged_df['delta_time_hours'] = merged_df['delta_time_hours'].apply(convert_to_HM)
+    
     merged_df.rename(columns={'delta_time_hours': 'Tempo Médio de Uso (H:M)'}, inplace=True)
     merged_df.rename(columns={'estacao': 'Operação'}, inplace=True)
 
-    merged_df = merged_df[merged_df['Operação'] != 'ADM']
+    operacoes_excluir = ['ADM', 'QUALIDADE', 'INSPEÇÃO DE QUANTIDA']
+    merged_df = merged_df[~merged_df['Operação'].isin(operacoes_excluir)]
 
     col20.dataframe(merged_df, width= 500,hide_index=True)
 
@@ -280,8 +301,8 @@ with tab4:
 
     pedidos = pedidos[pedidos['matriz'] == 'SIM']
     pedidos["entrega"] = pd.to_datetime(pedidos["entrega"], format = 'mixed', errors='coerce')
-    pedidos = pedidos[pedidos['entrega'].dt.month == 3]
-    pedidos = pedidos[pedidos['entrega'].dt.year == 2024]  
+    pedidos = pedidos[pedidos['entrega'].dt.month == target_month_2]
+    pedidos = pedidos[pedidos['entrega'].dt.year == target_year_2]  
 
     pedidos.loc[pedidos['cliente'].str.contains('WEG', na=False), 'cliente'] = 'WEG'
     pedidos.loc[pedidos['cliente'].str.contains('GE', na=False), 'cliente'] = 'GE'
@@ -303,13 +324,7 @@ with tab4:
     df_combinado.rename(columns={'quant_a_fat': 'Quantidade de peças por cliente'}, inplace=True)
     df_combinado.sort_values(by= 'cliente', ascending=False, inplace= True)
     col24,col25,col26,col27,col28,col29 = st.columns(6)
-
-    # weg = df_combinado.loc[df_combinado['cliente'].str.contains('WEG', na=False),'Quantidade de Pedidos']
-    # ge = df_combinado.loc[df_combinado['cliente'].str.contains('GE', na=False),'Quantidade de Pedidos']
-    # tav = df_combinado.loc[df_combinado['cliente'].str.contains('TAV', na=False),'Quantidade de Pedidos']
-    # hita = df_combinado.loc[df_combinado['cliente'].str.contains('HITA', na=False),'Quantidade de Pedidos']
-    # sha = df_combinado.loc[df_combinado['cliente'].str.contains('SHA', na=False),'Quantidade de Pedidos']
-    # pis = df_combinado.loc[df_combinado['cliente'].str.contains('PIS', na=False),'Quantidade de Pedidos']
+    col30,col31,col32 = st.columns(3)
 
     weg = get_quantity('WEG')
     ge = get_quantity('GE')
@@ -317,28 +332,70 @@ with tab4:
     hita = get_quantity('HITA')
     sha = get_quantity('SHA')
     pis = get_quantity('PIS')
+    prod = get_quantity('PROD')
+    hv = get_quantity('HVEX')
+    mg = get_quantity('MAGVATECH')
 
-    col24.metric(f"Peças Prodruzidas pela WEG", weg)
-    col25.metric(f"Peças Prodruzidas pela GE", ge)
-    col26.metric(f"Peças Prodruzidas pela TAVRIDA", tav)
-    col27.metric(f"Peças Prodruzidas pela HITACHI", hita)
-    col28.metric(f"Peças Prodruzidas pela SHAMAH", sha)
-    col29.metric(f"Peças Prodruzidas pela PISOM", pis)
+    col24.metric(f"Pedidos Entregues para WEG", weg)
+    col25.metric(f"Pedidos Entregues para GE", ge)
+    col26.metric(f"Pedidos Entregues para TAVRIDA", tav)
+    col27.metric(f"Pedidos Entregues para HITACHI", hita)
+    col28.metric(f"Pedidos Entregues para SHAMAH", sha)
+    col29.metric(f"Pedidos Entregues para PISOM", pis)
+    col30.metric(f"Pedidos Entregues para PRODUZ", prod)
+    col31.metric(f"Pedidos Entregues para HVEX", hv)
+    col32.metric(f"Pedidos Entregues para MAGVATECH", mg)
 
 
     # st.dataframe(df_combinado, use_container_width= True, hide_index=True)
 
-    fig3 = px.pie(df_combinado, values='Porcentagem (%)', names='cliente', title='Proporção de Pedidos Entregues por Cliente no Mês', width=800, height=500)
-    fig3.update_layout(title_yref='container',title_xanchor = 'center',title_x = 0.43, title_y = 0.95, legend=dict(font=dict(size=18)),font=dict(size=20), title_font=dict(size=20))
+    ordem_das_categorias = ['WEG', 'GE', 'TAVRIDA', 'HITACHI', 'SHAMAH', 'PRODUZ', 'PISOM','MAGVATECH','HVEX', 'ANTONIO EDUARDO']
+    df_combinado['cliente'] = pd.Categorical(df_combinado['cliente'], categories=ordem_das_categorias, ordered=True)
 
-    fig4 = px.pie(df_combinado, values='Porcentagem de Peças (%)', names='cliente', title='Proporção de Peças Entregues por Cliente no Mês', width=800, height=500)
-    fig4.update_layout(title_yref='container',title_xanchor = 'center',title_x = 0.43, title_y = 0.95, legend=dict(font=dict(size=18)),font=dict(size=20), title_font=dict(size=20))
+    limite = 5
 
+    fig3 = go.Figure(data=[go.Pie(
+        labels=df_combinado['cliente'],
+        values=df_combinado['Porcentagem (%)'],
+        text=[f"{percent:.2f}%" if percent >= limite else "" for percent in df_combinado['Porcentagem (%)']],
+        textinfo='label+text',
+        insidetextorientation='radial' 
+    )])
+    fig3.update_layout(
+    title='Proporção de Pedidos Entregues por Cliente no Mês',
+    width=800,
+    height=500,
+    margin=dict(t=100, b=0, l=125, r=0),
+    title_x=0.1,
+    title_y=1,
+    legend=dict(font=dict(size=16)),
+    font=dict(size=20),
+    title_font=dict(size=18)
+)
 
-    col30,col31 = st.columns([0.5,0.5])
+    fig4 = go.Figure(data=[go.Pie(
+        labels=df_combinado['cliente'],
+        values=df_combinado['Porcentagem de Peças (%)'],
+        text=[f"{percent:.2f}%" if percent >= limite else "" for percent in df_combinado['Porcentagem de Peças (%)']],
+        textinfo='label+text',
+        insidetextorientation='radial' 
+    )])
+    fig4.update_layout(
+    title='Proporção de Peças Entregues por Cliente no Mês',
+    width=800,
+    height=500,
+    margin=dict(t=100, b=0, l=125, r=0),
+    title_x=0.1,
+    title_y=1,
+    legend=dict(font=dict(size=16)),
+    font=dict(size=20),
+    title_font=dict(size=18)
+)
 
-    col30.plotly_chart(fig3, use_container_width=True)
-    col31.plotly_chart(fig4, use_container_width=True)
+    col36,col37 = st.columns([0.5,0.5])
+
+    col36.plotly_chart(fig3, use_container_width=True)
+    col37.plotly_chart(fig4, use_container_width=True)
 
 
 
