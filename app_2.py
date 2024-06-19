@@ -36,19 +36,49 @@ def get_quantity(cliente_name):
         0
     ).sum()
 
-def create_pie_chart(df, values, names, title):
-    fig = px.pie(df, values=values, names=names, title=title, width=800, height=500,
-                 category_orders={names: ordem_das_categorias})
+def create_pie_chart(df, values_column, names_column, title):
+    ordem_das_categorias = ['WEG', 'GE', 'TAVRIDA', 'HITACHI', 'SHAMAH', 'PRODUZ', 'PISOM', 'MAGVATECH', 'HVEX', 'ANTONIO EDUARDO']
+    cores = {
+        'WEG': 'blue',
+        'GE': 'lightblue',
+        'TAVRIDA': 'red',
+        'HITACHI': 'orange',
+        'SHAMAH': 'purple',
+        'PRODUZ': 'green',
+        'PISOM': 'yellow',
+        'MAGVATECH': 'pink',
+        'HVEX': 'grey',
+        'ANTONIO EDUARDO': 'brown'
+    }
+    df = df.sort_values(by=names_column)
+    
+    fig = go.Figure(data=[go.Pie(
+        labels=df[names_column],
+        values=df[values_column],
+        marker=dict(colors=[cores[categoria] for categoria in df[names_column]]),
+        text=[f"{percent:.2f}%" for percent in df[values_column]],
+        textinfo='label+text',
+        insidetextorientation='tangential',
+        textfont=dict(size=18)
+    )])
+
     fig.update_layout(
-        title_yref='container',
-        title_xanchor='center',
-        title_x=0.43,
-        title_y=0.95,
-        legend=dict(font=dict(size=18)),
+        title=dict(
+            text=title,
+            x=0.5,  # Centraliza o título horizontalmente
+            xanchor='center',
+            yanchor='top'
+        ),
+        width=800,
+        height=500,
+        margin=dict(t=100, b=0, l=125, r=0),
+        showlegend=False,  # Esconde a legenda
         font=dict(size=20),
-        title_font=dict(size=20)
+        title_font=dict(size=18)
     )
+    
     return fig
+
 
 st.set_page_config(layout="wide")   
 st.image('logo.png', width= 150)
@@ -336,61 +366,25 @@ with tab4:
     hv = get_quantity('HVEX')
     mg = get_quantity('MAGVATECH')
 
-    col24.metric(f"Pedidos Entregues para WEG", weg)
-    col25.metric(f"Pedidos Entregues para GE", ge)
-    col26.metric(f"Pedidos Entregues para TAVRIDA", tav)
-    col27.metric(f"Pedidos Entregues para HITACHI", hita)
-    col28.metric(f"Pedidos Entregues para SHAMAH", sha)
-    col29.metric(f"Pedidos Entregues para PISOM", pis)
-    col30.metric(f"Pedidos Entregues para PRODUZ", prod)
-    col31.metric(f"Pedidos Entregues para HVEX", hv)
-    col32.metric(f"Pedidos Entregues para MAGVATECH", mg)
+    col24.metric(f"Pedidos para WEG", weg)
+    col25.metric(f"Pedidos para GE", ge)
+    col26.metric(f"Pedidos para TAVRIDA", tav)
+    col27.metric(f"Pedidos para HITACHI", hita)
+    col28.metric(f"Pedidos para SHAMAH", sha)
+    col29.metric(f"Pedidos para PISOM", pis)
+    col30.metric(f"Pedidos para PRODUZ", prod)
+    col31.metric(f"Pedidos para HVEX", hv)
+    col32.metric(f"Pedidos para MAGVATECH", mg)
 
 
     # st.dataframe(df_combinado, use_container_width= True, hide_index=True)
 
-    ordem_das_categorias = ['WEG', 'GE', 'TAVRIDA', 'HITACHI', 'SHAMAH', 'PRODUZ', 'PISOM','MAGVATECH','HVEX', 'ANTONIO EDUARDO']
-    df_combinado['cliente'] = pd.Categorical(df_combinado['cliente'], categories=ordem_das_categorias, ordered=True)
-
     limite = 5
 
-    fig3 = go.Figure(data=[go.Pie(
-        labels=df_combinado['cliente'],
-        values=df_combinado['Porcentagem (%)'],
-        text=[f"{percent:.2f}%" if percent >= limite else "" for percent in df_combinado['Porcentagem (%)']],
-        textinfo='label+text',
-        insidetextorientation='radial' 
-    )])
-    fig3.update_layout(
-    title='Proporção de Pedidos Entregues por Cliente no Mês',
-    width=800,
-    height=500,
-    margin=dict(t=100, b=0, l=125, r=0),
-    title_x=0.1,
-    title_y=1,
-    legend=dict(font=dict(size=16)),
-    font=dict(size=20),
-    title_font=dict(size=18)
-)
 
-    fig4 = go.Figure(data=[go.Pie(
-        labels=df_combinado['cliente'],
-        values=df_combinado['Porcentagem de Peças (%)'],
-        text=[f"{percent:.2f}%" if percent >= limite else "" for percent in df_combinado['Porcentagem de Peças (%)']],
-        textinfo='label+text',
-        insidetextorientation='radial' 
-    )])
-    fig4.update_layout(
-    title='Proporção de Peças Entregues por Cliente no Mês',
-    width=800,
-    height=500,
-    margin=dict(t=100, b=0, l=125, r=0),
-    title_x=0.1,
-    title_y=1,
-    legend=dict(font=dict(size=16)),
-    font=dict(size=20),
-    title_font=dict(size=18)
-)
+    fig3 = create_pie_chart(df_combinado, 'Porcentagem (%)', 'cliente', 'Proporção de Pedidos por Cliente no Mês')
+    fig4 = create_pie_chart(df_combinado, 'Porcentagem de Peças (%)', 'cliente', 'Proporção de Peças por Cliente no Mês')
+
 
     col36,col37 = st.columns([0.5,0.5])
 
