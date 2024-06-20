@@ -65,14 +65,14 @@ def create_pie_chart(df, values_column, names_column, title):
     fig.update_layout(
         title=dict(
             text=title,
-            x=0.5,  # Centraliza o título horizontalmente
+            x=0.5,
             xanchor='center',
             yanchor='top'
         ),
         width=800,
         height=500,
-        margin=dict(t=100, b=0, l=125, r=0),
-        showlegend=False,  # Esconde a legenda
+        margin=dict(t=100, b=0, l=125, r=110),
+        showlegend=False,
         font=dict(size=20),
         title_font=dict(size=18)
     )
@@ -325,11 +325,8 @@ with tab4:
     with col23:
         target_year_2 = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), key=4,index= 1 ,placeholder ='Escolha uma opção')
 
-    cond = pedidos['descricao'].str.contains('COMPONENTE|POS.|POS-|ITEM|POS |PEÇA|BRACKET|CORONA RING', na=False)
-    pedidos.loc[cond, 'matriz'] = 'NAO'
-    pedidos.loc[~cond, 'matriz'] = 'SIM'
+    pedidos = pedidos.drop_duplicates(subset=['pedido'], keep='first')
 
-    pedidos = pedidos[pedidos['matriz'] == 'SIM']
     pedidos["entrega"] = pd.to_datetime(pedidos["entrega"], format = 'mixed', errors='coerce')
     pedidos = pedidos[pedidos['entrega'].dt.month == target_month_2]
     pedidos = pedidos[pedidos['entrega'].dt.year == target_year_2]  
