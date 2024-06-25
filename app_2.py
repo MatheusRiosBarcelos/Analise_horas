@@ -50,12 +50,14 @@ def create_pie_chart(df, values_column, names_column, title):
         'HVEX': 'grey',
         'ANTONIO EDUARDO': 'brown'
     }
+    red_palette = ['#FF0000', '#fd3a3a', '#fa5252', '#FF8E8E', '#FF9E9E',
+               '#FFAEAE', '#FFBEBE', '#FFCECE', '#FFE0E0', '#FFF0F0']  
     df = df.sort_values(by=names_column)
     
     fig = go.Figure(data=[go.Pie(
         labels=df[names_column],
         values=df[values_column],
-        marker=dict(colors=[cores[categoria] for categoria in df[names_column]]),
+        marker=dict(colors=[red_palette[i] for i in range(len(df[names_column]))]),
         text=[f"{percent:.2f}%" for percent in df[values_column]],
         textinfo='label+text',
         insidetextorientation='tangential',
@@ -172,18 +174,46 @@ with tab1:
     col2.metric('Eficiência (%)', f'{percent_horas}%', f'{delta_1}%')
     col3.metric("Média", f"{media}H")
    
-    col11,col12 = st.columns([0.8,0.2])
+    col11,col12 = st.columns([0.5,0.5])
 
     ordem_2 = df_filtrado_year.groupby(['estacao', df_filtrado_year['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
     ordem_2.rename(columns = {'delta_time_hours':'Tempo de uso total (H)'}, inplace = True)
     ordem_2.rename(columns = {'Datetime_ini': 'Mês'}, inplace = True)
 
-    fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= 'Eficiência Mensal',text_auto='.2s', width=1300)
-    fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False)
+    fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= 'Eficiência Mensal',text_auto='.2s', width=600, height=500)
+    fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
     fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.5, title_y = 0.95,title_xanchor = 'center')
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
     
     col11.plotly_chart(fig2)
+
+    x = ordens[ordens['Datetime_ini'].dt.year == 2024]
+    x = x.groupby(['estacao', x['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
+
+    x.loc[x['estacao'].str.contains('SRC', na=False), 'estacao'] = 'Corte-Serra'
+    x.loc[x['estacao'].str.contains('SFH', na=False), 'estacao'] = 'Corte-Serra'
+    x.loc[x['estacao'].str.contains('TCNV', na=False), 'estacao'] = 'Torno convencional'
+    x.loc[x['estacao'].str.contains('TCNC', na=False), 'estacao'] = 'Torno CNC'
+    x.loc[x['estacao'].str.contains('FRZ', na=False), 'estacao'] = 'Fresadora convencional'
+    x.loc[x['estacao'].str.contains('CNC 001', na=False), 'estacao'] = 'Fresadora CNC'
+    x.loc[x['estacao'].str.contains('PLM', na=False), 'estacao'] = 'Corte-Plasma'
+    x.loc[x['estacao'].str.contains('MCL', na=False), 'estacao'] = 'Corte-Laser'
+    x.loc[x['estacao'].str.contains('GLT', na=False), 'estacao'] = 'Corte-Guilhotina'
+    x.loc[x['estacao'].str.contains('DHCNC', na=False), 'estacao'] = 'Dobra'
+    x.loc[x['estacao'].str.contains('MQS', na=False), 'estacao'] = 'Soldagem'
+    print(x.head(5))
+
+    x = x[x['estacao'].isin(['Corte-Serra', 'Torno convencional', 'Torno CNC', 'Fresadora convencional', 'Fresadora CNC', 'Corte-Plasma', 'Corte-Laser', 'Corte-Guilhotina', 'Dobra', 'Soldagem'])]
+    fig20 = go.Figure(data=go.Heatmap(
+            z=x['delta_time_hours'],
+            x=x['Datetime_ini'],
+            y=x['estacao'],
+            colorscale='Reds'),
+            )
+
+    fig20.update_layout(title='Horas trabalhadas por Mês', width=700, height= 500)
+
+    col12.plotly_chart(fig20)
 
 with tab2:
     col9,col10 = st.columns([0.2,0.8])
