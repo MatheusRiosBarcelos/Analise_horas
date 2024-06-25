@@ -180,16 +180,14 @@ with tab1:
     ordem_2.rename(columns = {'delta_time_hours':'Tempo de uso total (H)'}, inplace = True)
     ordem_2.rename(columns = {'Datetime_ini': 'Mês'}, inplace = True)
 
-    fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= 'Eficiência Mensal',text_auto='.2s', width=600, height=500)
+    fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= f'Eficiência Mensal {estacao}',text_auto='.2s', width=600, height=500)
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
-    fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.5, title_y = 0.95,title_xanchor = 'center')
+    fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.55, title_y = 0.95,title_xanchor = 'center')
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
     
     col11.plotly_chart(fig2)
 
     x = ordens[ordens['Datetime_ini'].dt.year == 2024]
-    x = x.groupby(['estacao', x['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
-
     x.loc[x['estacao'].str.contains('SRC', na=False), 'estacao'] = 'Corte-Serra'
     x.loc[x['estacao'].str.contains('SFH', na=False), 'estacao'] = 'Corte-Serra'
     x.loc[x['estacao'].str.contains('TCNV', na=False), 'estacao'] = 'Torno convencional'
@@ -201,7 +199,9 @@ with tab1:
     x.loc[x['estacao'].str.contains('GLT', na=False), 'estacao'] = 'Corte-Guilhotina'
     x.loc[x['estacao'].str.contains('DHCNC', na=False), 'estacao'] = 'Dobra'
     x.loc[x['estacao'].str.contains('MQS', na=False), 'estacao'] = 'Soldagem'
-    print(x.head(5))
+    x = x.groupby(['estacao', x['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
+
+
 
     x = x[x['estacao'].isin(['Corte-Serra', 'Torno convencional', 'Torno CNC', 'Fresadora convencional', 'Fresadora CNC', 'Corte-Plasma', 'Corte-Laser', 'Corte-Guilhotina', 'Dobra', 'Soldagem'])]
     fig20 = go.Figure(data=go.Heatmap(
@@ -211,7 +211,7 @@ with tab1:
             colorscale='Reds'),
             )
 
-    fig20.update_layout(title='Horas trabalhadas por Mês', width=700, height= 500)
+    fig20.update_layout(title='Mapa de Calor Horas trabalhadas Mensalmente', width=700, height= 500,title_x = 0.55, title_y = 0.95,title_xanchor = 'center', xaxis_title = 'Mês')
 
     col12.plotly_chart(fig20)
 
