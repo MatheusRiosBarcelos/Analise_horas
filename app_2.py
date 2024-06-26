@@ -187,7 +187,7 @@ with tab1:
     
     col11.plotly_chart(fig2)
 
-    x = ordens[ordens['Datetime_ini'].dt.year == 2024]
+    x = ordens[ordens['Datetime_ini'].dt.year == target_year]
     x.loc[x['estacao'].str.contains('SRC', na=False), 'estacao'] = 'Corte-Serra'
     x.loc[x['estacao'].str.contains('SFH', na=False), 'estacao'] = 'Corte-Serra'
     x.loc[x['estacao'].str.contains('TCNV', na=False), 'estacao'] = 'Torno convencional'
