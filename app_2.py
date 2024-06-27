@@ -174,13 +174,13 @@ with tab1:
     col2.metric('Eficiência (%)', f'{percent_horas}%', f'{delta_1}%')
     col3.metric("Média", f"{media}H")
    
-    col11,col12,col13 = st.columns(3)
+    col11,col12,col13 = st.columns([0.30,0.30,0.4])
 
     ordem_2 = df_filtrado_year.groupby(['estacao', df_filtrado_year['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
     ordem_2.rename(columns = {'delta_time_hours':'Tempo de uso total (H)'}, inplace = True)
     ordem_2.rename(columns = {'Datetime_ini': 'Mês'}, inplace = True)
 
-    fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= f'Eficiência Mensal {estacao} (%)',text_auto='.2s', width=400, height=500)
+    fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= f'Eficiência Mensal {estacao} (%)',text_auto='.2s', width=350, height=500)
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
     fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.55, title_y = 0.95,title_xanchor = 'center')
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
@@ -206,7 +206,7 @@ with tab1:
     y = x.groupby('Datetime_ini')['delta_time_hours'].sum().reset_index().round(2)
     y['delta_time_hours'] = ((y['delta_time_hours'] / 5200)*100).round(2)
     
-    fig21 = px.bar(y, x = 'Datetime_ini', y = 'delta_time_hours',title= f'Eficiência Mensal Total da Fábrica (%)',text_auto='.2s', width=400, height=500)
+    fig21 = px.bar(y, x = 'Datetime_ini', y = 'delta_time_hours',title= f'Eficiência Mensal Total da Fábrica (%)',text_auto='.2s', width=350, height=500)
     fig21.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
     fig21.update_layout(yaxis_title = 'Eficiência (%)', xaxis_title = 'Mês', title_x = 0.55, title_y = 0.95,title_xanchor = 'center')
     fig21.update_xaxes(tickvals=list(range(len(y)+1)))
