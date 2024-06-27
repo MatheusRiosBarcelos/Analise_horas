@@ -304,6 +304,7 @@ with tab2:
     col17,col18 = st.columns([0.9,0.1])
 
     soma_por_estacao['Tempo de uso total (H:M)'] = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_HM)
+    soma_por_estacao  = soma_por_estacao[soma_por_estacao['Estação de Trabalho'] != 'ADM']
     
     with col5:
         st.markdown(f"<h1 style='font-size: 20px;'>Tabela de Horas por Estação no PV {target_pv}/Número de peças é {quant}</h1>", unsafe_allow_html=True)
@@ -313,7 +314,6 @@ with tab2:
 
 with tab3:
 
-    col20,col21 = st.columns([0.35,0.65])
     codprod_target = st.text_input("Código do Produto", value= '14303600')
     number_parts = st.number_input("Quantas peças são", value=int(1), placeholder="Type a number...")
 
@@ -337,6 +337,8 @@ with tab3:
     
     index_of_first_occurrence = merged_df[((merged_df['matriz'] == 'SIM') & (~merged_df['descricao'].isna()))].index[0]
     descricao_2 = merged_df.loc[index_of_first_occurrence, 'descricao']
+    fig_box = px.box(merged_df,x='estacao' ,y="delta_time_hours")
+
 
     merged_df = merged_df.dropna(subset=['estacao', 'delta_time_hours'])
     merged_df = merged_df.groupby('estacao')['delta_time_hours'].mean().reset_index().round(2)
@@ -358,11 +360,15 @@ with tab3:
 
     nova_linha_2 = {'Operação': 'Total', 'Tempo Médio de Uso (H:M)': tempo_total_medio}
     merged_df = pd.concat([merged_df, pd.DataFrame([nova_linha_2])], ignore_index=True)
+    
+    st.markdown(f"<h1 style='text-align: left;'>{descricao_2}</h1>", unsafe_allow_html=True)
+
+    col20,col21 = st.columns([0.35,0.65])
 
     col20.dataframe(merged_df, width= 500,hide_index=True)
 
-    with col21:
-        st.markdown(f"<h1 style='text-align: left;'>{descricao_2}</h1>", unsafe_allow_html=True)
+    col21.plotly_chart(fig_box)
+    
 
 with tab4:
     
