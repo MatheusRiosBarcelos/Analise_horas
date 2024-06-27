@@ -168,11 +168,11 @@ with tab1:
     
     delta_1 = round(percent_horas - 100, 1)
     
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     col1.metric(f"Total de Horas da Máquina em {target_month}-{target_year}", f"{total_de_horas}H", f'{round(total_de_horas-200,1)}H')
     col2.metric('Eficiência (%)', f'{percent_horas}%', f'{delta_1}%')
-    # col3.metric("Média", f"{media}H")
+    col3.metric("Média", f"{media}H")
    
     col11,col12,col13 = st.columns(3)
 
@@ -222,8 +222,7 @@ with tab1:
             )
 
     fig20.update_layout(title='Mapa de Calor Horas trabalhadas Mensalmente', width=500, height= 500,title_x = 0.55, title_y = 0.95,title_xanchor = 'center', xaxis_title = 'Mês')
-
-    # col001,col002 = st.columns([0.5,0.5])
+    fig20.update_xaxes(tickvals=list(range(len(x)+1)))
 
     col13.plotly_chart(fig20)
 
