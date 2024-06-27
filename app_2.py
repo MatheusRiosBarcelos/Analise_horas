@@ -168,19 +168,19 @@ with tab1:
     
     delta_1 = round(percent_horas - 100, 1)
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
 
     col1.metric(f"Total de Horas da Máquina em {target_month}-{target_year}", f"{total_de_horas}H", f'{round(total_de_horas-200,1)}H')
     col2.metric('Eficiência (%)', f'{percent_horas}%', f'{delta_1}%')
-    col3.metric("Média", f"{media}H")
+    # col3.metric("Média", f"{media}H")
    
-    col11,col12 = st.columns([0.5,0.5])
+    col11,col12,col13 = st.columns(3)
 
     ordem_2 = df_filtrado_year.groupby(['estacao', df_filtrado_year['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
     ordem_2.rename(columns = {'delta_time_hours':'Tempo de uso total (H)'}, inplace = True)
     ordem_2.rename(columns = {'Datetime_ini': 'Mês'}, inplace = True)
 
-    fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= f'Eficiência Mensal {estacao}',text_auto='.2s', width=600, height=500)
+    fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= f'Eficiência Mensal {estacao} (%)',text_auto='.2s', width=400, height=500)
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
     fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.55, title_y = 0.95,title_xanchor = 'center')
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
@@ -198,12 +198,22 @@ with tab1:
     x.loc[x['estacao'].str.contains('MCL', na=False), 'estacao'] = 'Corte-Laser'
     x.loc[x['estacao'].str.contains('GLT', na=False), 'estacao'] = 'Corte-Guilhotina'
     x.loc[x['estacao'].str.contains('DHCNC', na=False), 'estacao'] = 'Dobra'
+    x.loc[x['estacao'].str.contains('DBE', na=False), 'estacao'] = 'Dobra'
     x.loc[x['estacao'].str.contains('MQS', na=False), 'estacao'] = 'Soldagem'
     x = x.groupby(['estacao', x['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
-
-
-
     x = x[x['estacao'].isin(['Corte-Serra', 'Torno convencional', 'Torno CNC', 'Fresadora convencional', 'Fresadora CNC', 'Corte-Plasma', 'Corte-Laser', 'Corte-Guilhotina', 'Dobra', 'Soldagem'])]
+    
+    y = x.groupby('Datetime_ini')['delta_time_hours'].sum().reset_index().round(2)
+    y['delta_time_hours'] = ((y['delta_time_hours'] / 5200)*100).round(2)
+    
+    fig21 = px.bar(y, x = 'Datetime_ini', y = 'delta_time_hours',title= f'Eficiência Mensal Total da Fábrica (%)',text_auto='.2s', width=400, height=500)
+    fig21.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
+    fig21.update_layout(yaxis_title = 'Eficiência (%)', xaxis_title = 'Mês', title_x = 0.55, title_y = 0.95,title_xanchor = 'center')
+    fig21.update_xaxes(tickvals=list(range(len(y)+1)))
+
+    col12.plotly_chart(fig21)
+
+
     fig20 = go.Figure(data=go.Heatmap(
             z=x['delta_time_hours'],
             x=x['Datetime_ini'],
@@ -211,9 +221,11 @@ with tab1:
             colorscale='Reds'),
             )
 
-    fig20.update_layout(title='Mapa de Calor Horas trabalhadas Mensalmente', width=700, height= 500,title_x = 0.55, title_y = 0.95,title_xanchor = 'center', xaxis_title = 'Mês')
+    fig20.update_layout(title='Mapa de Calor Horas trabalhadas Mensalmente', width=500, height= 500,title_x = 0.55, title_y = 0.95,title_xanchor = 'center', xaxis_title = 'Mês')
 
-    col12.plotly_chart(fig20)
+    # col001,col002 = st.columns([0.5,0.5])
+
+    col13.plotly_chart(fig20)
 
 with tab2:
     col9,col10 = st.columns([0.2,0.8])
@@ -330,6 +342,7 @@ with tab3:
     merged_df = merged_df.dropna(subset=['estacao', 'delta_time_hours'])
     merged_df = merged_df.groupby('estacao')['delta_time_hours'].mean().reset_index().round(2)
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'] * number_parts
+    tempo_total_medio = convert_to_HM(merged_df['delta_time_hours'].sum())
 
     if 'delta_time_hours' in merged_df.columns:
         if merged_df['delta_time_hours'].notnull().all():
@@ -341,6 +354,11 @@ with tab3:
 
     operacoes_excluir = ['ADM', 'QUALIDADE', 'INSPEÇÃO DE QUANTIDA']
     merged_df = merged_df[~merged_df['Operação'].isin(operacoes_excluir)]
+    if ('Corte-Plasma' in merged_df['Operação'].values) and ('Corte-Laser' in merged_df['Operação'].values):
+        merged_df = merged_df[merged_df['Operação'] != 'Corte-Plasma']
+
+    nova_linha_2 = {'Operação': 'Total', 'Tempo Médio de Uso (H:M)': tempo_total_medio}
+    merged_df = pd.concat([merged_df, pd.DataFrame([nova_linha_2])], ignore_index=True)
 
     col20.dataframe(merged_df, width= 500,hide_index=True)
 
@@ -393,6 +411,8 @@ with tab4:
     hv = get_quantity('HVEX')
     mg = get_quantity('MAGVATECH')
 
+    total_de_pedidos = weg + ge + tav + hita + sha + pis + prod + hv + mg
+
     col24.metric(f"Pedidos para WEG", weg)
     col25.metric(f"Pedidos para GE", ge)
     col26.metric(f"Pedidos para TAVRIDA", tav)
@@ -402,6 +422,12 @@ with tab4:
     col30.metric(f"Pedidos para PRODUZ", prod)
     col31.metric(f"Pedidos para HVEX", hv)
     col32.metric(f"Pedidos para MAGVATECH", mg)
+
+    mes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Desembro']
+
+    st.markdown(f"<h1 style='text-align: center; color: black; font-size: {14}px; font-family: sans-serif; font-weight: normal;'>Total de Pedidos no mês de {mes[target_month_2-1]}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align: center; color: black; font-size: {30}px; font-family: sans-serif; font-weight: normal;'>{total_de_pedidos}</h1>", unsafe_allow_html=True)
+
 
 
     # st.dataframe(df_combinado, use_container_width= True, hide_index=True)
