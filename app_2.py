@@ -87,7 +87,7 @@ st.image('logo.png', width= 150)
 
 ordens = pd.read_csv('ordens (4).csv', sep = ',')
 pedidos = pd.read_csv('pedidos (1).csv', sep = ',')
-orc = pd.read_csv('orcamento_csv.csv', sep=';')
+orc = pd.read_excel('Processos_de_Fabricacao_T.xlsx')
 
 ordens = ordens[ordens['estacao'] != 'Selecione...']
 
@@ -157,7 +157,12 @@ with tab1:
     
     df_filtrado_year = new_df[new_df['Datetime_ini'].dt.year == target_year]
     df_filtrado = df_filtrado_year[df_filtrado_year['Datetime_ini'].dt.month == target_month]
-    hora_esperada_de_trabalho = 200
+    
+    if estacao == 'Soldagem':
+        hora_esperada_de_trabalho = 1000
+    else:
+        hora_esperada_de_trabalho = 200    
+    
     num_entries = df_filtrado.shape[0]
     
     total_de_horas = round(df_filtrado['delta_time_hours'].sum(),1)
@@ -203,8 +208,8 @@ with tab1:
     x = x.groupby(['estacao', x['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
     x = x[x['estacao'].isin(['Corte-Serra', 'Torno convencional', 'Torno CNC', 'Fresadora convencional', 'Fresadora CNC', 'Corte-Plasma', 'Corte-Laser', 'Corte-Guilhotina', 'Dobra', 'Soldagem'])]
     
-    y = x.groupby('Datetime_ini')['delta_time_hours'].sum().reset_index().round(2)
-    y['delta_time_hours'] = ((y['delta_time_hours'] / 5200)*100).round(2)
+    y = x.groupby('Datetime_ini')['delta_time_hours'].sum().reset_index().round(2) 
+    y['delta_time_hours'] = ((y['delta_time_hours'] / 3800)*100).round(2)
     
     fig21 = px.bar(y, x = 'Datetime_ini', y = 'delta_time_hours',title= f'Eficiência Mensal Total da Fábrica (%)',text_auto='.2s', width=350, height=500)
     fig21.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
@@ -231,28 +236,32 @@ with tab2:
     with col9:
         target_pv = st.selectbox("Selecione o PV", pedidos["pedido"].sort_values().unique(),index=1200,placeholder ='Escolha uma opção')
     
-    col4, col5 = st.columns([3,2])
+    col4, col5 = st.columns(2)
 
     descricao = pedidos.loc[pedidos['pedido'] == target_pv]
     descricao = descricao.reset_index(drop=True)
 
     descricao = descricao.iloc[0,14]
-
+    pedidos['codprod'] = pedidos['codprod'].astype(str)
+    orc['CODIGO'] = orc['CODIGO'].astype(str)
     pedido = pedidos[pedidos['pedido'] == target_pv]
     quant = pedido['quant_a_fat'].iloc[0]
     filtro_df = pedido['ordem']
     ordem = ordens[ordens['ordem'].isin(filtro_df)]
+    codprod = pedido['codprod'].iloc[0]
     
     ordem.loc[ordem['estacao'].str.contains('SRC', na=False), 'estacao'] = 'Corte-Serra'
     ordem.loc[ordem['estacao'].str.contains('SFH', na=False), 'estacao'] = 'Corte-Serra'
     ordem.loc[ordem['estacao'].str.contains('TCNV', na=False), 'estacao'] = 'Torno convencional'
     ordem.loc[ordem['estacao'].str.contains('TCNC', na=False), 'estacao'] = 'Torno CNC'
     ordem.loc[ordem['estacao'].str.contains('FRZ', na=False), 'estacao'] = 'Fresadora convencional'
+    ordem.loc[ordem['estacao'].str.contains('DHCNC', na=False), 'estacao'] = 'Dobra'
+    ordem.loc[ordem['estacao'].str.contains('DBE', na=False), 'estacao'] = 'Dobra'    
     ordem.loc[ordem['estacao'].str.contains('CNC 001', na=False), 'estacao'] = 'Fresadora CNC'
     ordem.loc[ordem['estacao'].str.contains('PLM', na=False), 'estacao'] = 'Corte-Plasma'
     ordem.loc[ordem['estacao'].str.contains('MCL', na=False), 'estacao'] = 'Corte-Laser'
     ordem.loc[ordem['estacao'].str.contains('GLT', na=False), 'estacao'] = 'Corte-Guilhotina'
-    ordem.loc[ordem['estacao'].str.contains('DHCNC', na=False), 'estacao'] = 'Dobra'
+    
     ordem.loc[ordem['estacao'].str.contains('MQS', na=False), 'estacao'] = 'Soldagem'
     ordem = ordem.dropna(subset=['estacao', 'delta_time_hours'])
    
@@ -268,38 +277,106 @@ with tab2:
     nova_linha = {'Estação de Trabalho': 'Total', 'Tempo de uso total (H:M)': total_de_horas_pedido}
     soma_por_estacao = pd.concat([soma_por_estacao, pd.DataFrame([nova_linha])], ignore_index=True)
     
-    orc_pv = orc[orc['PV'] == target_pv]
-    if not orc_pv.empty:
-        soma_por_estacao['Tempo esperado no Orçamento'] = pd.Series([np.nan] * len(soma_por_estacao))
+    orc_codprod = orc[orc['CODIGO'] == codprod]
+    corte_plasma = None
+    corte_serra = None
+    corte_laser = None
+    corte_guilhotina = None
+    torno = None
+    torno_CNC = None
+    fresa = None
+    fresa_CNC = None
+    prensa = None
+    dobra = None
+    rosqueadeira = None
+    furadeira = None
+    soldagem = None
+    acabamento = None
+    jato = None
+    pintura = None
+    montagem = None
+    total = None
+    if not orc_codprod.empty:
+        soma_por_estacao['Tempo esperado no Orçamento'] = pd.Series([np.nan] * len(soma_por_estacao))  
+    for index,row in orc_codprod.iterrows():
+        if not pd.isna(row['CORTE-PLASMA']):
+            corte_plasma = convert_to_HM((row['CORTE-PLASMA']/60)*quant)
+        else:
+            corte_plasma = None
+        if not pd.isna(row['CORTE - SERRA']):
+            corte_serra = convert_to_HM((row['CORTE - SERRA']/60)*quant)
+        else:
+            corte_serra = None
+        if not pd.isna(row['CORTE-LASER']):
+            corte_laser = convert_to_HM((row['CORTE-LASER']/60)*quant)
+        else:
+            corte_laser = None
+        if not pd.isna(row['CORTE-GUILHOTINA']):
+            corte_guilhotina = convert_to_HM((row['CORTE-GUILHOTINA']/60)*quant)
+        else:
+            corte_guilhotina = None
+        if not pd.isna(row['TORNO CONVENCIONAL']):
+            torno = convert_to_HM((row['TORNO CONVENCIONAL']/60)*quant)
+        else:
+            torno = None
+        if not pd.isna(row['TORNO CNC']):
+            torno_CNC = convert_to_HM((row['TORNO CNC']/60)*quant)
+        else:
+            torno_CNC = None
+        if not pd.isna(row['FRESADORA CONVENCIONAL']):
+            fresa = convert_to_HM((row['FRESADORA CONVENCIONAL']/60)*quant)
+        else:
+            fresa = None
+        if not pd.isna(row['CENTRO DE USINAGEM']):
+            fresa_CNC = convert_to_HM((row['CENTRO DE USINAGEM']/60)*quant)
+        else:
+            fresa_CNC = None
+        if not pd.isna(row['PRENSA (AMASSAMENTO)']):
+            prensa = convert_to_HM((row['PRENSA (AMASSAMENTO)']/60)*quant)
+        else:
+            prensa = None
+        if not pd.isna(row['DOBRA']):
+            dobra = convert_to_HM((row['DOBRA']/60)*quant)
+        else:
+            dobra = None
+        if not pd.isna(row['ROSQUEADEIRA']):
+            rosqueadeira = convert_to_HM((row['ROSQUEADEIRA']/60)*quant)
+        else:
+            rosqueadeira = None
+        if not pd.isna(row['FURADEIRA DE BANCADA']):
+            furadeira = convert_to_HM((row['FURADEIRA DE BANCADA']/60)*quant)
+        else:
+            furadeira = None
+        if not pd.isna(row['SOLDAGEM']):
+            soldagem = convert_to_HM((row['SOLDAGEM']/60)*quant)
+        else:
+            soldagem = None
+        if not pd.isna(row['ACABAMENTO']):
+            acabamento = convert_to_HM((row['ACABAMENTO']/60)*quant)
+        else:
+            acabamento = None
+        if not pd.isna(row['JATEAMENTO']):
+            jato = convert_to_HM((row['JATEAMENTO']/60)*quant)
+        else:
+            jato = None
+        if not pd.isna(row['PINTURA']):
+            pintura = convert_to_HM((row['PINTURA']/60)*quant)
+        else:
+            pintura = None
+        if not pd.isna(row['MONTAGEM']):
+            montagem = convert_to_HM((row['MONTAGEM']/60)*quant)
+        else:
+            montagem = None
+        if not pd.isna(row['TOTAL']):
+            total = convert_to_HM((row['TOTAL']/60)*quant)
+        else:
+            total = None
 
-        for index,row in orc_pv.iterrows():
-            corte_plasma = convert_to_HM(row['Corte-Plasma'])
-            corte_serra = convert_to_HM(row['Corte-Serra'])
-            corte_laser = convert_to_HM(row['Corte-Laser'])
-            corte_guilhotina = convert_to_HM(row['Corte-Guilhotina'])
-            torno = convert_to_HM(row['Torno convencional'])
-            torno_CNC = convert_to_HM(row['Torno CNC'])
-            fresa = convert_to_HM(row['Fresadora convencional'])
-            fresa_CNC = convert_to_HM(row['Fresadora CNC'])
-            prensa = convert_to_HM(row['Prensa'])
-            dobra = convert_to_HM(row['Dobra'])
-            rosqueadeira = convert_to_HM(row['Rosqueadeira'])
-            furadeira = convert_to_HM(row['Furadeira de bancada'])
-            soldagem = convert_to_HM(row['Soldagem'])
-            acabamento = convert_to_HM(row['Acabamento'])
-            jato = convert_to_HM(row['Jateamento'])
-            pintura = convert_to_HM(row['Pintura'])
-            montagem = convert_to_HM(row['Montagem'])
-            inspecao = convert_to_HM(row['inspecao'])
-            expedicao = convert_to_HM(row['expedicao'])
-            adm = convert_to_HM(row['ADM'])
-            dgq = convert_to_HM(row['DGQ'])
-            total = convert_to_HM(row['Total'])
+    tempo_esperado = {'Corte-Plasma': corte_plasma,'Corte-Serra': corte_serra,'Corte-Laser': corte_laser,'Corte-Guilhotina': corte_guilhotina,'Torno convencional': torno,'Torno CNC': torno_CNC,'Fresadora convencional': fresa,'Fresadora CNC': fresa_CNC,'Prensa': prensa,'Dobra': dobra,'Rosqueadeira': rosqueadeira,'Furadeira de bancada': furadeira,'Soldagem': soldagem,'Acabamento': acabamento,'Jateamento': jato,'Pintura': pintura,'Montagem': montagem,'Total': total}
+    for estacao, tempo in tempo_esperado.items():
+        if (soma_por_estacao['Estação de Trabalho'] == estacao).any():
+            soma_por_estacao.loc[soma_por_estacao['Estação de Trabalho'] == estacao, 'Tempo esperado no Orçamento'] = tempo
 
-        tempo_esperado = {'Corte-Plasma': corte_plasma,'Corte-Serra': corte_serra,'Corte-Laser': corte_laser,'Corte-Guilhotina': corte_guilhotina,'Torno convencional': torno,'Torno CNC': torno_CNC,'Fresadora convencional': fresa,'Fresadora CNC': fresa_CNC,'Prensa': prensa,'Dobra': dobra,'Rosqueadeira': rosqueadeira,'Furadeira de bancada': furadeira,'Soldagem': soldagem,'Acabamento': acabamento,'Jateamento': jato,'Pintura': pintura,'Montagem': montagem,'inspecao': inspecao,'expedicao': expedicao,'ADM': adm,'DGQ': dgq,'Total': total}
-        for estacao, tempo in tempo_esperado.items():
-            if (soma_por_estacao['Estação de Trabalho'] == estacao).any():
-                soma_por_estacao.loc[soma_por_estacao['Estação de Trabalho'] == estacao, 'Tempo esperado no Orçamento'] = tempo
     
     col17,col18 = st.columns([0.9,0.1])
 
@@ -308,7 +385,7 @@ with tab2:
     
     with col5:
         st.markdown(f"<h1 style='font-size: 20px;'>Tabela de Horas por Estação no PV {target_pv}/Número de peças é {quant}</h1>", unsafe_allow_html=True)
-    col5.dataframe(soma_por_estacao, width= 500,hide_index=True)
+    col5.dataframe(soma_por_estacao, width= 600,hide_index=True)
     with col10:
         st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
 
@@ -328,17 +405,17 @@ with tab3:
     merged_df.loc[merged_df['estacao'].str.contains('TCNV', na=False), 'estacao'] = 'Torno convencional'
     merged_df.loc[merged_df['estacao'].str.contains('TCNC', na=False), 'estacao'] = 'Torno CNC'
     merged_df.loc[merged_df['estacao'].str.contains('FRZ', na=False), 'estacao'] = 'Fresadora convencional'
-    merged_df.loc[merged_df['estacao'].str.contains('CNC', na=False), 'estacao'] = 'Fresadora CNC'
+    merged_df.loc[merged_df['estacao'].str.contains('DHCNC', na=False), 'estacao'] = 'Dobra'
+    merged_df.loc[merged_df['estacao'].str.contains('DBE', na=False), 'estacao'] = 'Dobra'
+    merged_df.loc[merged_df['estacao'].str.contains('CNC 001', na=False), 'estacao'] = 'Fresadora CNC'
     merged_df.loc[merged_df['estacao'].str.contains('PLM', na=False), 'estacao'] = 'Corte-Plasma'
     merged_df.loc[merged_df['estacao'].str.contains('MCL', na=False), 'estacao'] = 'Corte-Laser'
     merged_df.loc[merged_df['estacao'].str.contains('GLT', na=False), 'estacao'] = 'Corte-Guilhotina'
-    merged_df.loc[merged_df['estacao'].str.contains('DHCNC', na=False), 'estacao'] = 'Dobra'
     merged_df.loc[merged_df['estacao'].str.contains('MQS', na=False), 'estacao'] = 'Soldagem'
     
     index_of_first_occurrence = merged_df[((merged_df['matriz'] == 'SIM') & (~merged_df['descricao'].isna()))].index[0]
     descricao_2 = merged_df.loc[index_of_first_occurrence, 'descricao']
     fig_box = px.box(merged_df,x='estacao' ,y="delta_time_hours")
-
 
     merged_df = merged_df.dropna(subset=['estacao', 'delta_time_hours'])
     merged_df = merged_df.groupby('estacao')['delta_time_hours'].mean().reset_index().round(2)
