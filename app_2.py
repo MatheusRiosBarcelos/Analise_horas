@@ -353,10 +353,6 @@ with tab2:
             torno_CNC = convert_to_HM((row['TORNO CNC']/60)*quant)
         else:
             torno_CNC = None
-        if not pd.isna(row['FRESADORA CONVENCIONAL']):
-            fresa_conv = convert_to_HM((row['FRESADORA CONVENCIONAL']/60)*quant)
-        else:
-            fresa = None
         if not pd.isna(row['FRESADORA']):
             fresa = convert_to_HM((row['FRESADORA']/60)*quant)
         else:
