@@ -11,6 +11,10 @@ def convert_to_HM(x):
     m = int((hours - h) * 60)
     return f"{h}:{m:02d}"
 
+def convert_to_float(hm):
+    h, m = map(int, hm.split(':'))
+    return h + m / 60
+
 def count_weekend_days(start_date, end_date):
     if pd.isna(start_date) or pd.isna(end_date):
         return 0
@@ -184,16 +188,10 @@ with tab1:
     pedidos['codprod'] = pedidos['codprod'].astype(str)
     orc['CODIGO'] = orc['CODIGO'].astype(str)
 
-    # col51, col52 = st.columns(2)
-    # with col51:
-    #     target_month_3 = st.selectbox("Mês", ordens["Mes"].sort_values().unique(),key=10, index= 0,placeholder ='Escolha uma opção')
-    # with col52:
-    #     target_year_3 = st.selectbox("Ano", ordens["Ano"].sort_values().unique(),key=20 ,index= 1 ,placeholder ='Escolha uma opção')
-
     pedidos_orc = pedidos[pedidos['entrega'].dt.month == target_month]
     pedidos_orc = pedidos_orc[pedidos['entrega'].dt.year == target_year]
 
-    pedidos_orc = pedidos_orc.merge(orc[['CODIGO', 'TOTAL']], left_on='codprod', right_on='CODIGO', how='left')
+    pedidos_orc = pedidos_orc.merge(orc[['CODIGO','FRESADORA','CORTE - SERRA','CORTE-PLASMA', 'CORTE-LASER','CORTE-GUILHOTINA','TORNO CONVENCIONAL','TORNO CNC','CENTRO DE USINAGEM','PRENSA (AMASSAMENTO)','CALANDRA','DOBRADEIRA','ROSQUEADEIRA','FURADEIRA DE BANCADA','SOLDAGEM','ACABAMENTO','JATEAMENTO','PINTURA','MONTAGEM','DIVERSOS','TOTAL']], left_on='codprod', right_on='CODIGO', how='left')
     pedidos_orc = pedidos_orc.dropna(subset=['CODIGO'])
     pedidos_orc['TOTAL'] = pedidos_orc['TOTAL'] * pedidos_orc['quant_a_fat']
     total_de_horas_orcadas = (pedidos_orc['TOTAL'].sum()/60).round(0)
@@ -201,11 +199,41 @@ with tab1:
     ordens_orc = ordens[ordens['data_ini'].dt.month == target_month]
     ordens_orc = ordens_orc[ordens_orc['data_ini'].dt.year == target_year]
     total_de_horas_trabalhadas = (ordens_orc['delta_time_hours'].sum()).round(0)
+    
+    mapa_maquinas = {
+    'SRC': 'CORTE - SERRA',
+    'FRZ': 'FREZADORA',
+    'PLM': 'CORTE-PLASMA',
+    'MCL': 'CORTE-LASER',
+    'GLT': 'CORTE-GUILHOTINA',
+    'TCNV': 'TORNO CONVENCIONAL',
+    'TCNC': 'TORNO CNC',
+    'CNC 001': 'CENTRO DE USINAGEM',
+    'Soldagem': 'SOLDAGEM',
+    'ACABAMENTO': 'ACABAMENTO',
+    'DHCNC': 'DOBRADEIRA',
+    'DBEP' : 'PRENSA (AMASSAMENTO)',
+    'JATO' : 'JATEAMENTO'
+    }
+    maquina = None
 
-    col53, col54 = st.columns(2)
+    for chave, valor in mapa_maquinas.items():
+        if chave in estacao:
+            maquina = valor
+            break
 
-    col53.metric(f"Total de horas Orçadas {target_month}-{target_year}", f"{total_de_horas_orcadas}H")
+    if maquina is None:
+        maquina = 'DESCONHECIDA'
+
+    pedidos_orc[maquina] = ((pedidos_orc[maquina] * pedidos_orc['quant_a_fat'])/60).round(0)
+    total_de_horas_orcadas_maquina = pedidos_orc[maquina].sum()
+
+
+    col53, col54, col55 = st.columns(3)
+
+    col53.metric(f"Total de horas orçadas em {target_month}-{target_year} para {maquina}", f"{total_de_horas_orcadas_maquina}H")
     col54.metric(f"Total de horas Trabalhadas {target_month}-{target_year}", f"{total_de_horas_trabalhadas}H")
+    col55.metric(f"Total de horas Orçadas {target_month}-{target_year}", f"{total_de_horas_orcadas}H")
 
     col11,col12,col13 = st.columns([0.30,0.30,0.4])
 
@@ -298,12 +326,12 @@ with tab2:
     soma_por_estacao.rename(columns={'estacao': 'Estação de Trabalho'}, inplace=True)
     
     total_de_horas_pedido = round(soma_por_estacao['Tempo de uso total (H:M)'].sum(),2)
+    total_de_horas_pedido = convert_to_HM(total_de_horas_pedido)
 
     fig = px.pie(soma_por_estacao, values='Tempo de uso total (H:M)', names='Estação de Trabalho', title='Proporção de Tempo de Uso por Máquina em Cada Pedido', width=800, height=500)
     fig.update_layout(title_yref='container',title_xanchor = 'center',title_x = 0.43, title_y = 0.95, legend=dict(font=dict(size=18)),font=dict(size=20), title_font=dict(size=20))
     col4.plotly_chart(fig, use_container_width=True)
     nova_linha = {'Estação de Trabalho': 'Total', 'Tempo de uso total (H:M)': total_de_horas_pedido}
-    soma_por_estacao = pd.concat([soma_por_estacao, pd.DataFrame([nova_linha])], ignore_index=True)
     
     orc_codprod = orc[orc['CODIGO'] == codprod]
     corte_plasma = None
@@ -313,7 +341,7 @@ with tab2:
     torno = None
     torno_CNC = None
     fresa = None
-    fresa_conv = None
+    # fresa_conv = None
     fresa_CNC = None
     prensa = None
     dobra = None
@@ -325,6 +353,7 @@ with tab2:
     pintura = None
     montagem = None
     calandra = None
+    amassamento = None
     total = None
     if not orc_codprod.empty:
         soma_por_estacao['Tempo esperado no Orçamento'] = pd.Series([np.nan] * len(soma_por_estacao))  
@@ -405,8 +434,21 @@ with tab2:
             total = convert_to_HM((row['TOTAL']/60)*quant)
         else:
             total = None
+    
+    soma_por_estacao['Tempo de uso total (H:M)'] = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_HM)
 
-    tempo_esperado = {'Corte-Plasma': corte_plasma,'Corte-Serra': corte_serra,'Calandra': calandra,'Corte-Laser': corte_laser,'Corte-Guilhotina': corte_guilhotina,'Torno convencional': torno,'Torno CNC': torno_CNC,'Fresadora convencional': fresa_conv,'Fresadora CNC': fresa_CNC,'Fresadora CNC': fresa,'Prensa': prensa,'Dobra': dobra,'Rosqueadeira': rosqueadeira,'Furadeira de bancada': furadeira,'Soldagem': soldagem,'Acabamento': acabamento,'Jateamento': jato,'Pintura': pintura,'Montagem': montagem,'Total': total}
+    nova_linha_3 = {'Estação de Trabalho': 'Acabamento', 'Tempo esperado no Orçamento': acabamento}
+    nova_linha_4 = {'Estação de Trabalho': 'Dobra', 'Tempo esperado no Orçamento': dobra}
+
+    if (orc_codprod['ACABAMENTO'] != None).any():
+        soma_por_estacao = pd.concat([soma_por_estacao, pd.DataFrame([nova_linha_3])], ignore_index=True)
+    if (orc_codprod['DOBRADEIRA'] != None).any():
+        soma_por_estacao = pd.concat([soma_por_estacao, pd.DataFrame([nova_linha_4])], ignore_index=True)
+    
+    soma_por_estacao = pd.concat([soma_por_estacao, pd.DataFrame([nova_linha])], ignore_index=True)
+
+
+    tempo_esperado = {'Corte-Plasma': corte_plasma,'Corte-Serra': corte_serra,'Calandra': calandra,'Corte-Laser': corte_laser,'Corte-Guilhotina': corte_guilhotina,'Torno convencional': torno,'Torno CNC': torno_CNC,'Fresadora convencional': fresa,'Fresadora CNC': fresa_CNC,'Prensa': prensa,'Dobra/Amassamento': dobra,'Amassamento':amassamento,'Rosqueadeira': rosqueadeira,'Furadeira de bancada': furadeira,'Soldagem': soldagem,'Acabamento': acabamento,'Jateamento': jato,'Pintura': pintura,'Montagem': montagem, 'Total': total}
     for estacao, tempo in tempo_esperado.items():
         if (soma_por_estacao['Estação de Trabalho'] == estacao).any():
             soma_por_estacao.loc[soma_por_estacao['Estação de Trabalho'] == estacao, 'Tempo esperado no Orçamento'] = tempo
@@ -414,10 +456,9 @@ with tab2:
     
     col17,col18 = st.columns([0.9,0.1])
 
-    soma_por_estacao['Tempo de uso total (H:M)'] = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_HM)
+    # soma_por_estacao['Tempo de uso total (H:M)'] = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_HM)
     soma_por_estacao  = soma_por_estacao[soma_por_estacao['Estação de Trabalho'] != 'ADM']
     soma_por_estacao  = soma_por_estacao[soma_por_estacao['Estação de Trabalho'] != 'QUALIDADE']
-
     
     with col5:
         st.markdown(f"<h1 style='font-size: 20px;'>Tabela de Horas por Estação no PV {target_pv}/Número de peças é {quant}</h1>", unsafe_allow_html=True)
