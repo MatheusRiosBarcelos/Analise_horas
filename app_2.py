@@ -120,6 +120,13 @@ ordens.loc[ordens['estacao'] == 'CCNC001', 'estacao'] = 'CNC 001'
 ordens.loc[ordens['estacao'] == 'CCNC01', 'estacao'] = 'CNC 001'
 ordens.loc[ordens['estacao'] == 'PLM001', 'estacao'] = 'PLM 001'
 ordens.loc[ordens['estacao'] == 'PLM 01', 'estacao'] = 'PLM 001'
+ordens.loc[ordens['estacao'] == 'Bancada', 'estacao'] = 'ACABAMENTO'
+ordens.loc[ordens['estacao'] == 'BANCADA', 'estacao'] = 'ACABAMENTO'
+ordens.loc[ordens['estacao'].str.contains('AJT'),'estacao'] = 'ACABAMENTO'
+ordens.loc[ordens['estacao'].str.contains('FRZ'),'estacao'] = 'FRESADORAS'
+
+
+
 
 ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], format = 'mixed', errors='coerce')
 ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], format = 'mixed', errors='coerce')
@@ -142,7 +149,7 @@ ordens = ordens.apply(adjust_delta_time_hours, axis=1)
 ordens = ordens.apply(adjust_delta_time, axis=1)
 ordens = ordens.loc[~(ordens[['delta_time_hours']] < 0).any(axis=1)]
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ", 'ANÁLISE MENSAL DE PEDIDOS', 'HORAS ORÇAMENTAIS'])
+tab1, tab2, tab3, tab4 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ", 'ANÁLISE MENSAL DE PEDIDOS'])
 
 with tab1:
     col6, col7, col8 = st.columns(3)
@@ -164,9 +171,11 @@ with tab1:
     df_filtrado = df_filtrado_year[df_filtrado_year['Datetime_ini'].dt.month == target_month]
     
     if estacao == 'Soldagem':
-        hora_esperada_de_trabalho = 1000
+        hora_esperada_de_trabalho = 1100  
+    elif estacao == 'FRESADORAS':
+        hora_esperada_de_trabalho = 440
     else:
-        hora_esperada_de_trabalho = 200    
+        hora_esperada_de_trabalho = 220
     
     num_entries = df_filtrado.shape[0]
     
@@ -180,7 +189,7 @@ with tab1:
     
     col1, col2, col3 = st.columns(3)
 
-    col1.metric(f"Total de Horas da Máquina {estacao} em {target_month}-{target_year}", f"{total_de_horas}H", f'{round(total_de_horas-200,1)}H')
+    col1.metric(f"Total de Horas da Máquina {estacao} em {target_month}-{target_year}", f"{total_de_horas}H", f'{round(total_de_horas-hora_esperada_de_trabalho,1)}H')
     col2.metric(f'Eficiência (%) da Máquina {estacao}', f'{percent_horas}%', f'{delta_1}%')
     col3.metric(f"Média da Máquina {estacao}", f"{media}H")
     
@@ -202,7 +211,7 @@ with tab1:
     
     mapa_maquinas = {
     'SRC': 'CORTE - SERRA',
-    'FRZ': 'FREZADORA',
+    'FRESADORAS': 'FRESADORA',
     'PLM': 'CORTE-PLASMA',
     'MCL': 'CORTE-LASER',
     'GLT': 'CORTE-GUILHOTINA',
@@ -231,9 +240,15 @@ with tab1:
 
     col53, col54, col55 = st.columns(3)
 
-    col53.metric(f"Total de horas orçadas em {target_month}-{target_year} para {maquina}", f"{total_de_horas_orcadas_maquina}H")
+    if maquina == 'FRESADORA':
+        disp_tempo_maquina = 440
+    else:
+        disp_tempo_maquina = 220
+        
+
+    col53.metric(f"Total de horas orçadas em {target_month}-{target_year} para {maquina}", f"{total_de_horas_orcadas_maquina}H",f'{round(total_de_horas_orcadas_maquina-disp_tempo_maquina,1)}H')
     col54.metric(f"Total de horas Trabalhadas {target_month}-{target_year}", f"{total_de_horas_trabalhadas}H")
-    col55.metric(f"Total de horas Orçadas {target_month}-{target_year}", f"{total_de_horas_orcadas}H")
+    col55.metric(f"Total de horas Orçadas {target_month}-{target_year}", f"{total_de_horas_orcadas}H", f'{round(total_de_horas_orcadas-2860,1)}H')
 
     col11,col12,col13 = st.columns([0.30,0.30,0.4])
 
@@ -265,7 +280,7 @@ with tab1:
     x = x[x['estacao'].isin(['Corte-Serra', 'Torno convencional', 'Torno CNC', 'Fresadora convencional', 'Fresadora CNC', 'Corte-Plasma', 'Corte-Laser', 'Corte-Guilhotina', 'Dobra', 'Soldagem'])]
     
     y = x.groupby('Datetime_ini')['delta_time_hours'].sum().reset_index().round(2) 
-    y['delta_time_hours'] = ((y['delta_time_hours'] / 3800)*100).round(2)
+    y['delta_time_hours'] = ((y['delta_time_hours'] / 2860)*100).round(2)
     
     fig21 = px.bar(y, x = 'Datetime_ini', y = 'delta_time_hours',title= f'Eficiência Mensal Total da Fábrica (%)',text_auto='.2s', width=350, height=500)
     fig21.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
@@ -355,6 +370,7 @@ with tab2:
     calandra = None
     amassamento = None
     total = None
+    
     if not orc_codprod.empty:
         soma_por_estacao['Tempo esperado no Orçamento'] = pd.Series([np.nan] * len(soma_por_estacao))  
     for index,row in orc_codprod.iterrows():
@@ -434,6 +450,7 @@ with tab2:
             total = convert_to_HM((row['TOTAL']/60)*quant)
         else:
             total = None
+
     
     soma_por_estacao['Tempo de uso total (H:M)'] = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_HM)
 
@@ -456,7 +473,6 @@ with tab2:
     
     col17,col18 = st.columns([0.9,0.1])
 
-    # soma_por_estacao['Tempo de uso total (H:M)'] = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_HM)
     soma_por_estacao  = soma_por_estacao[soma_por_estacao['Estação de Trabalho'] != 'ADM']
     soma_por_estacao  = soma_por_estacao[soma_por_estacao['Estação de Trabalho'] != 'QUALIDADE']
     
@@ -466,6 +482,15 @@ with tab2:
     with col10:
         st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
 
+
+
+
+    col60,col61 = st.columns([0.9,0.1])
+    colunas_selecionadas = ['ordem', 'estacao', 'nome_func', 'Datetime_ini', 'Datetime_fim']
+    ordem['ordem'] = ordem['ordem'].astype(str)
+    with col60:
+        col60.dataframe(ordem[colunas_selecionadas], use_container_width=True,hide_index=True)
+    
 with tab3:
 
     codprod_target = st.text_input("Código do Produto", value= '14303600')
@@ -622,7 +647,7 @@ with tab3:
         else:
             total = None
 
-    tempo_esperado = {'Corte-Plasma': corte_plasma,'Corte-Serra': corte_serra,'Calandra': calandra,'Corte-Laser': corte_laser,'Corte-Guilhotina': corte_guilhotina,'Torno convencional': torno,'Torno CNC': torno_CNC,'Fresadora convencional': fresa,'Fresadora CNC': fresa_CNC,'Prensa': prensa,'Dobra/Amassamento': dobra,'Amassamento':amassamento,'Rosqueadeira': rosqueadeira,'Furadeira de bancada': furadeira,'Soldagem': soldagem,'Acabamento': acabamento,'Jateamento': jato,'Pintura': pintura,'Montagem': montagem,'Total': total}
+    tempo_esperado = {'Corte-Plasma': corte_plasma,'Corte-Serra': corte_serra,'Calandra': calandra,'Corte-Laser': corte_laser,'Corte-Guilhotina': corte_guilhotina,'Torno convencional': torno,'Torno CNC': torno_CNC,'Fresadora convencional': fresa,'Fresadora CNC': fresa_CNC,'Prensa': prensa,'Dobra/Amassamento': dobra,'Amassamento':amassamento,'Rosqueadeira': rosqueadeira,'Furadeira de bancada': furadeira,'Soldagem': soldagem,'ACABAMENTO': acabamento,'Jateamento': jato,'Pintura': pintura,'Montagem': montagem,'Total': total}
     for estacao, tempo in tempo_esperado.items():
         if (merged_df['Operação'] == estacao).any():
             merged_df.loc[merged_df['Operação'] == estacao, 'Tempo no Orçamento'] = tempo
