@@ -652,7 +652,6 @@ with tab3:
         if (merged_df['Operação'] == estacao).any():
             merged_df.loc[merged_df['Operação'] == estacao, 'Tempo no Orçamento'] = tempo
 
-    print(fresa)
     st.markdown(f"<h1 style='text-align: left;'>{descricao_2}</h1>", unsafe_allow_html=True)
 
     col20,col21 = st.columns([0.9,0.1])
@@ -665,7 +664,7 @@ with tab4:
     with col22:
         target_month_2 = st.selectbox("Mês", ordens["Mes"].sort_values().unique(), key=3,index= 0,placeholder ='Escolha uma opção')
     with col23:
-        target_year_2 = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), key=4,index= 0 ,placeholder ='Escolha uma opção')
+        target_year_2 = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), key=4,index= 1,placeholder ='Escolha uma opção')
 
     pedidos = pedidos.drop_duplicates(subset=['pedido'], keep='first')
 
