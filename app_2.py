@@ -91,7 +91,7 @@ st.image('logo.png', width= 150)
 
 ordens = pd.read_csv('ordens (4).csv', sep = ',')
 pedidos = pd.read_csv('pedidos (1).csv', sep = ',')
-orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+orc = pd.read_excel('Z:/SGQ/Processos_de_Fabricacao.xlsx')
 
 ordens = ordens[ordens['estacao'] != 'Selecione...']
 
@@ -111,6 +111,8 @@ ordens['estacao'] = ordens['estacao'].fillna('a')
 mqs = (ordens['estacao'].str.contains('MQS'))
 ordens.loc[mqs,'estacao'] = 'SOLDAGEM'
 ordens.loc[ordens['estacao'].str.contains('JPS'),'estacao'] = 'JATO'
+ordens.loc[ordens['estacao'] == 'PLM001', 'estacao'] = 'PLM 001'
+ordens.loc[ordens['estacao'] == 'PLM 01', 'estacao'] = 'PLM 001'
 ordens.loc[ordens['estacao'].str.contains('SFH'),'estacao'] = 'CORTE - SERRA'
 ordens.loc[ordens['estacao'].str.contains('SRC'),'estacao'] = 'CORTE - SERRA'
 ordens.loc[ordens['estacao'].str.contains('TCNV'),'estacao'] = 'TORNO CONVENCIONAL'
@@ -126,18 +128,12 @@ ordens.loc[ordens['estacao'] == 'CNC 001', 'estacao'] = 'CENTRO DE USINAGEM'
 ordens.loc[ordens['estacao'] == 'CCNC 001', 'estacao'] = 'CENTRO DE USINAGEM'
 ordens.loc[ordens['estacao'] == 'CCNC001', 'estacao'] = 'CENTRO DE USINAGEM'
 ordens.loc[ordens['estacao'] == 'CCNC01', 'estacao'] = 'CENTRO DE USINAGEM'
-ordens.loc[ordens['estacao'] == 'PLM001', 'estacao'] = 'PLM 001'
-ordens.loc[ordens['estacao'] == 'PLM 01', 'estacao'] = 'PLM 001'
 ordens.loc[ordens['estacao'] == 'Bancada', 'estacao'] = 'ACABAMENTO'
 ordens.loc[ordens['estacao'] == 'BANCADA', 'estacao'] = 'ACABAMENTO'
 ordens.loc[ordens['estacao'].str.contains('AJT'),'estacao'] = 'ACABAMENTO'
 ordens.loc[ordens['estacao'].str.contains('FRZ'),'estacao'] = 'FRESADORAS'
 ordens.loc[ordens['estacao'].str.contains('Acabamento'),'estacao'] = 'ACABAMENTO'
 ordens.loc[ordens['estacao'].str.contains('DHCNC'),'estacao'] = 'DOBRA'
-
-
-
-
 
 ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], format = 'mixed', errors='coerce')
 ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], format = 'mixed', errors='coerce')
@@ -211,8 +207,10 @@ with tab1:
     orc['CODIGO'] = orc['CODIGO'].astype(str)
 
     pedidos_orc = pedidos[pedidos['entrega'].dt.month == target_month]
-    pedidos_orc = pedidos_orc[pedidos['entrega'].dt.year == target_year]
-
+    mask = pedidos['entrega'].dt.year == target_year
+    mask_aligned = mask.reindex(pedidos_orc.index, fill_value=False)
+    pedidos_orc = pedidos_orc[mask_aligned]
+    
     pedidos_orc = pedidos_orc.merge(orc[['CODIGO','FRESADORA','CORTE - SERRA','CORTE-PLASMA', 'CORTE-LASER','CORTE-GUILHOTINA','TORNO CONVENCIONAL','TORNO CNC','CENTRO DE USINAGEM','PRENSA (AMASSAMENTO)','CALANDRA','DOBRADEIRA','ROSQUEADEIRA','FURADEIRA DE BANCADA','SOLDAGEM','ACABAMENTO','JATEAMENTO','PINTURA','MONTAGEM','DIVERSOS','TOTAL']], left_on='codprod', right_on='CODIGO', how='left')
     pedidos_orc = pedidos_orc.dropna(subset=['CODIGO'])
     pedidos_orc['TOTAL'] = pedidos_orc['TOTAL'] * pedidos_orc['quant_a_fat']
@@ -457,7 +455,6 @@ with tab2:
             total = None
         
 
-    print(total)
     soma_por_estacao['Tempo de uso total (H:M)'] = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_HM)
 
     nova_linha_3 = {'Estação de Trabalho': 'Acabamento', 'Tempo esperado no Orçamento': acabamento}
@@ -471,7 +468,7 @@ with tab2:
     soma_por_estacao = pd.concat([soma_por_estacao, pd.DataFrame([nova_linha])], ignore_index=True)
 
 
-    tempo_esperado = {'Corte-Plasma': corte_plasma,'Corte-Serra': corte_serra,'Calandra': calandra,'Corte-Laser': corte_laser,'Corte-Guilhotina': corte_guilhotina,'Torno convencional': torno,'Torno CNC': torno_CNC,'Fresadora convencional': fresa,'Fresadora CNC': fresa_CNC,'Prensa': prensa,'Dobra/Amassamento': dobra,'Amassamento':amassamento,'Rosqueadeira': rosqueadeira,'Furadeira de bancada': furadeira,'Soldagem': soldagem,'ACABAMENTO': acabamento,'Jateamento': jato,'Pintura': pintura,'Montagem': montagem, 'Total': total}
+    tempo_esperado = {'CORTE-PLASMA': corte_plasma,'CORTE - SERRA': corte_serra,'Calandra': calandra,'CORTE-LASER': corte_laser,'CORTE-GUILHOTINA': corte_guilhotina,'TORNO CONVENCIONAL': torno,'TORNO CNC': torno_CNC,'FRESADORAS': fresa,'CENTRO DE USINAGEM': fresa_CNC,'Prensa': prensa,'Dobra/Amassamento': dobra,'Amassamento':amassamento,'Rosqueadeira': rosqueadeira,'Furadeira de bancada': furadeira,'SOLDAGEM': soldagem,'ACABAMENTO': acabamento,'JATO': jato,'Pintura': pintura,'Montagem': montagem, 'Total': total}
     for estacao, tempo in tempo_esperado.items():
         if (soma_por_estacao['Estação de Trabalho'] == estacao).any():
             soma_por_estacao.loc[soma_por_estacao['Estação de Trabalho'] == estacao, 'Tempo esperado no Orçamento'] = tempo
