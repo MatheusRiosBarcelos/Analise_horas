@@ -85,7 +85,6 @@ def create_pie_chart(df, values_column, names_column, title):
     
     return fig
 
-
 st.set_page_config(layout="wide")   
 st.image('logo.png', width= 150)
 
