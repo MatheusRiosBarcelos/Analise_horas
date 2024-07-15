@@ -90,7 +90,7 @@ st.image('logo.png', width= 150)
 
 ordens = pd.read_csv('ordens (4).csv', sep = ',')
 pedidos = pd.read_csv('pedidos (1).csv', sep = ',')
-orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+orc = pd.read_excel('Z:/SGQ/Processos_de_Fabricacao.xlsx')
 
 ordens = ordens[ordens['estacao'] != 'Selecione...']
 
@@ -219,6 +219,19 @@ with tab1:
     ordens_orc = ordens[ordens['data_ini'].dt.month == target_month]
     ordens_orc = ordens_orc[ordens_orc['data_ini'].dt.year == target_year]
     total_de_horas_trabalhadas = (ordens_orc['delta_time_hours'].sum()).round(0)
+
+    colunas = [
+        'ACABAMENTO', 'CORTE - SERRA', 'CORTE-PLASMA', 'CORTE-LASER', 'CENTRO DE USINAGEM','DOBRADEIRA', 'FRESADORA',
+        'TORNO CONVENCIONAL', 'TORNO CNC',
+        'SOLDAGEM'
+    ]
+
+
+    for index, row in pedidos_orc.iterrows():
+        for coluna in colunas:
+            if not pd.isna(row[coluna]):
+                # Use .loc to access the specific cell and assign the value
+                pedidos_orc.loc[index, coluna] = round((row[coluna]*row['quant_a_fat'])/60,0)
     
     mapa_maquinas = {
     'CORTE - SERRA': 'CORTE - SERRA',
@@ -245,9 +258,8 @@ with tab1:
     if maquina is None:
         maquina = 'DESCONHECIDA'
 
-    pedidos_orc[maquina] = ((pedidos_orc[maquina] * pedidos_orc['quant_a_fat'])/60).round(0)
+    # pedidos_orc[maquina] = ((pedidos_orc[maquina] * pedidos_orc['quant_a_fat'])/60).round(0)
     total_de_horas_orcadas_maquina = pedidos_orc[maquina].sum()
-
 
     col53,col54, col55 = st.columns(3)
 
@@ -259,7 +271,6 @@ with tab1:
         disp_tempo_maquina = 440
     else:
         disp_tempo_maquina = 220
-        
 
     col53.metric(f"Total de horas orçadas em {target_month}-{target_year} para {maquina}", f"{total_de_horas_orcadas_maquina}H",f'{round((total_de_horas_orcadas_maquina-disp_tempo_maquina)*-1,1)}H')
     col54.metric(f"Total de horas Trabalhadas {target_month}-{target_year}", f"{total_de_horas_trabalhadas}H")
@@ -292,7 +303,6 @@ with tab1:
 
     col12.plotly_chart(fig21)
 
-
     fig20 = go.Figure(data=go.Heatmap(
             z=x['delta_time_hours'],
             x=x['Datetime_ini'],
@@ -304,6 +314,49 @@ with tab1:
     fig20.update_xaxes(tickvals=list(range(len(x)+1)))
 
     col13.plotly_chart(fig20)
+
+
+
+
+    # Calculando as somas
+    somas = [pedidos_orc[coluna].sum() for coluna in colunas]
+
+    # Criando o DataFrame
+
+    # Limites de horas específicos
+    limites = {
+        'FRESADORA': 440,
+        'CORTE - SERRA': 220,
+        'CORTE-PLASMA': 220,
+        'CORTE-LASER': 220,
+        'TORNO CONVENCIONAL': 440,
+        'TORNO CNC': 220,
+        'CENTRO DE USINAGEM': 220,
+        'DOBRADEIRA': 220,
+        'SOLDAGEM': 1100,
+        'ACABAMENTO' : 440
+    }
+    # Adicionando os limites ao DataFrame
+    df_somas = pd.DataFrame({'Estação': colunas, 'Horas Orçadas': somas})
+    df_somas['Limite de Horas'] = df_somas['Estação'].map(limites)
+
+    # Adicionando a diferença entre o limite e as horas orçadas
+    df_somas['Horas Restantes'] = df_somas['Limite de Horas'] - df_somas['Horas Orçadas']
+
+    # Transformando o dataframe para o formato longo
+    df_long = df_somas.melt(id_vars='Estação', value_vars=['Horas Orçadas', 'Horas Restantes'],
+                    var_name='Tipo', value_name='Horas')
+
+    # Gráfico de Barras Empilhadas
+    fig_71 = px.bar(df_long, x='Estação', y='Horas', color='Tipo',
+                text_auto='.2s', color_discrete_sequence=['#e53737', '#fa5252'])
+    fig_71.update_layout(width=1800, height= 600,title_x = 0.45, title_y = 0.95,title_xanchor = 'center', xaxis_title = 'Mês',legend=dict(font=dict(size=18)),title=dict(text=f'Horas Orçadas e Restantes por Estação no mês {target_month}', font=dict(size=24)))
+    fig_71.update_traces(textfont_size=18, textangle=0, textposition="outside", cliponaxis=False)
+ 
+    
+    col71,col72 = st.columns([0.9,0.1])
+
+    col71.plotly_chart(fig_71)
 
 with tab2:
     col9,col10 = st.columns([0.2,0.8])
@@ -738,7 +791,6 @@ with tab4:
 
     col36.plotly_chart(fig3, use_container_width=True)
     col37.plotly_chart(fig4, use_container_width=True)
-
 
 st.markdown("""
     <style>
