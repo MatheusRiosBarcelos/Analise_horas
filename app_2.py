@@ -41,19 +41,7 @@ def get_quantity(cliente_name):
     ).sum()
 
 def create_pie_chart(df, values_column, names_column, title):
-    ordem_das_categorias = ['WEG', 'GE', 'TAVRIDA', 'HITACHI', 'SHAMAH', 'PRODUZ', 'PISOM', 'MAGVATECH', 'HVEX', 'ANTONIO EDUARDO']
-    cores = {
-        'WEG': 'blue',
-        'GE': 'lightblue',
-        'TAVRIDA': 'red',
-        'HITACHI': 'orange',
-        'SHAMAH': 'purple',
-        'PRODUZ': 'green',
-        'PISOM': 'yellow',
-        'MAGVATECH': 'pink',
-        'HVEX': 'grey',
-        'ANTONIO EDUARDO': 'brown'
-    }
+
     red_palette = ['#FF0000', '#fd3a3a', '#fa5252', '#FF8E8E', '#FF9E9E',
                '#FFAEAE', '#FFBEBE', '#FFCECE', '#FFE0E0', '#FFF0F0']  
     df = df.sort_values(by=names_column)
@@ -90,7 +78,7 @@ st.image('logo.png', width= 150)
 
 ordens = pd.read_csv('ordens (4).csv', sep = ',')
 pedidos = pd.read_csv('pedidos (1).csv', sep = ',')
-orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+orc = pd.read_excel('Z:/SGQ/Processos_de_Fabricacao.xlsx')
 
 ordens = ordens[ordens['estacao'] != 'Selecione...']
 
@@ -220,12 +208,7 @@ with tab1:
     ordens_orc = ordens_orc[ordens_orc['data_ini'].dt.year == target_year]
     total_de_horas_trabalhadas = (ordens_orc['delta_time_hours'].sum()).round(0)
 
-    colunas = [
-        'ACABAMENTO', 'CORTE - SERRA', 'CORTE-PLASMA', 'CORTE-LASER', 'CENTRO DE USINAGEM','DOBRADEIRA', 'FRESADORA',
-        'TORNO CONVENCIONAL', 'TORNO CNC',
-        'SOLDAGEM'
-    ]
-
+    colunas = ['ACABAMENTO', 'CORTE - SERRA', 'CORTE-PLASMA', 'CORTE-LASER', 'CENTRO DE USINAGEM','DOBRADEIRA', 'FRESADORA','TORNO CONVENCIONAL', 'TORNO CNC','SOLDAGEM']
 
     for index, row in pedidos_orc.iterrows():
         for coluna in colunas:
@@ -258,7 +241,6 @@ with tab1:
     if maquina is None:
         maquina = 'DESCONHECIDA'
 
-    # pedidos_orc[maquina] = ((pedidos_orc[maquina] * pedidos_orc['quant_a_fat'])/60).round(0)
     total_de_horas_orcadas_maquina = pedidos_orc[maquina].sum()
 
     col53,col54, col55 = st.columns(3)
@@ -284,7 +266,7 @@ with tab1:
 
     fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= f'Eficiência Mensal {estacao} (%)',text_auto='.2s', width=350, height=500)
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
-    fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.55, title_y = 0.95,title_xanchor = 'center')
+    fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.55, title_y = 0.95,title_xanchor = 'center',xaxis=dict(tickfont=dict(size=14)))
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
     
     col11.plotly_chart(fig2)
@@ -298,7 +280,7 @@ with tab1:
     
     fig21 = px.bar(y, x = 'Datetime_ini', y = 'delta_time_hours',title= f'Eficiência Mensal Total da Fábrica (%)',text_auto='.2s', width=350, height=500)
     fig21.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
-    fig21.update_layout(yaxis_title = 'Eficiência (%)', xaxis_title = 'Mês', title_x = 0.55, title_y = 0.95,title_xanchor = 'center')
+    fig21.update_layout(yaxis_title = 'Eficiência (%)', xaxis_title = 'Mês', title_x = 0.55, title_y = 0.95,title_xanchor = 'center',xaxis=dict(tickfont=dict(size=14)))
     fig21.update_xaxes(tickvals=list(range(len(y)+1)))
 
     col12.plotly_chart(fig21)
@@ -310,13 +292,8 @@ with tab1:
             colorscale='Reds'),
             )
 
-    fig20.update_layout(title='Mapa de Calor Horas trabalhadas Mensalmente', width=500, height= 500,title_x = 0.55, title_y = 0.95,title_xanchor = 'center', xaxis_title = 'Mês')
+    fig20.update_layout(title='Mapa de Calor Horas trabalhadas Mensalmente', width=500, height= 500,title_x = 0.55, title_y = 0.95,title_xanchor = 'center', xaxis_title = 'Mês',xaxis=dict(tickfont=dict(size=14)))
     fig20.update_xaxes(tickvals=list(range(len(x)+1)))
-
-    col13.plotly_chart(fig20)
-
-
-
 
     # Calculando as somas
     somas = [pedidos_orc[coluna].sum() for coluna in colunas]
@@ -349,14 +326,15 @@ with tab1:
 
     # Gráfico de Barras Empilhadas
     fig_71 = px.bar(df_long, x='Estação', y='Horas', color='Tipo',
-                text_auto='.2s', color_discrete_sequence=['#e53737', '#fa5252'])
-    fig_71.update_layout(width=1800, height= 600,title_x = 0.45, title_y = 0.95,title_xanchor = 'center', xaxis_title = 'Mês',legend=dict(font=dict(size=18)),title=dict(text=f'Horas Orçadas e Restantes por Estação no mês {target_month}', font=dict(size=24)))
+                text_auto='.2s', color_discrete_sequence=['#e53737', '#FFCECE'])
+    fig_71.update_layout(width=800, height= 500,title_x = 0.45, title_y = 0.95,title_xanchor = 'center', xaxis_title = 'Mês',xaxis=dict(tickfont=dict(size=14)),legend=dict(font=dict(size=14)),title=dict(text=f'Horas Orçadas e Restantes por Estação no mês {target_month}', font=dict(size=18)))
     fig_71.update_traces(textfont_size=18, textangle=0, textposition="outside", cliponaxis=False)
  
-    
     col71,col72 = st.columns([0.9,0.1])
 
-    col71.plotly_chart(fig_71)
+    col13.plotly_chart(fig_71)
+    
+    col71.plotly_chart(fig20)
 
 with tab2:
     col9,col10 = st.columns([0.2,0.8])
