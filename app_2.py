@@ -303,7 +303,7 @@ with tab1:
     # Limites de horas específicos
     limites = {
         'FRESADORA': 440,
-        'CORTE - SERRA': 220,
+        'CORTE - SERRA': 440,
         'CORTE-PLASMA': 220,
         'CORTE-LASER': 220,
         'TORNO CONVENCIONAL': 440,
