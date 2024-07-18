@@ -78,7 +78,7 @@ st.image('logo.png', width= 150)
 
 ordens = pd.read_csv('ordens (4).csv', sep = ',')
 pedidos = pd.read_csv('pedidos (1).csv', sep = ',')
-orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+orc = pd.read_excel('Z:/SGQ/Processos_de_Fabricacao.xlsx')
 
 ordens = ordens[ordens['estacao'] != 'Selecione...']
 
@@ -256,7 +256,7 @@ with tab1:
 
     col53.metric(f"Total de horas orçadas em {target_month}-{target_year} para {maquina}", f"{total_de_horas_orcadas_maquina}H",f'{round((total_de_horas_orcadas_maquina-disp_tempo_maquina)*-1,1)}H')
     col54.metric(f"Total de horas Trabalhadas {target_month}-{target_year}", f"{total_de_horas_trabalhadas}H")
-    col55.metric(f"Total de horas Orçadas {target_month}-{target_year}", f"{total_de_horas_orcadas}H", f'{round((total_de_horas_orcadas-2860)*-1,1)}H')
+    col55.metric(f"Total de horas Orçadas {target_month}-{target_year}", f"{total_de_horas_orcadas}H", f'{round((total_de_horas_orcadas-3300)*-1,1)}H')
 
     col11,col12,col13 = st.columns([0.30,0.30,0.4])
 
@@ -273,10 +273,10 @@ with tab1:
 
     x = ordens[ordens['Datetime_ini'].dt.year == target_year]
     x = x.groupby(['estacao', x['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
-    x = x[x['estacao'].isin(['CORTE - SERRA', 'TORNO CONVENCIONAL', 'TORNO CNC', 'FRESADORAS', 'CENTRO DE USINAGEM', 'CORTE-PLASMA', 'CORTE-LASER', 'CORTE-GUILHOTINA', 'DOBRA', 'SOLDAGEM'])]
+    x = x[x['estacao'].isin(['CORTE - SERRA', 'TORNO CONVENCIONAL', 'TORNO CNC', 'FRESADORAS', 'CENTRO DE USINAGEM', 'CORTE-PLASMA', 'CORTE-LASER', 'CORTE-GUILHOTINA', 'DOBRA', 'SOLDAGEM', 'ACABAMENTO'])]
     
     y = x.groupby('Datetime_ini')['delta_time_hours'].sum().reset_index().round(2) 
-    y['delta_time_hours'] = ((y['delta_time_hours'] / 2860)*100).round(2)
+    y['delta_time_hours'] = ((y['delta_time_hours'] / 3300)*100).round(2)
     
     fig21 = px.bar(y, x = 'Datetime_ini', y = 'delta_time_hours',title= f'Eficiência Mensal Total da Fábrica (%)',text_auto='.2s', width=350, height=500)
     fig21.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
