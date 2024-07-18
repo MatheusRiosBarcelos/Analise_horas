@@ -84,19 +84,15 @@ def get_hours_expected(estacao):
 st.set_page_config(layout="wide")   
 st.image('logo.png', width= 150)
 
-# Carregar os dados
 ordens = pd.read_csv('ordens (4).csv', sep=',')
 pedidos = pd.read_csv('pedidos (1).csv', sep=',')
-orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+orc = pd.read_excel('Z:/SGQ/Processos_de_Fabricacao.xlsx')
 
-# Filtrar os dados
 ordens = ordens[ordens['estacao'] != 'Selecione...']
 
-# Preencher valores ausentes e converter tipos
 ordens.fillna({'ordem': 0, 'data_ini': 0, 'hora_ini': 0}, inplace=True)
 ordens['ordem'] = ordens['ordem'].astype(int)
 
-# Criar colunas de datetime e delta_time
 ordens['Datetime_ini'] = pd.to_datetime(ordens['data_ini'] + ' ' + ordens['hora_ini'], errors='coerce')
 ordens['Datetime_fim'] = pd.to_datetime(ordens['data_fim'] + ' ' + ordens['hora_fim'], errors='coerce')
 
@@ -104,40 +100,11 @@ ordens['delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime_ini'])
 ordens['delta_time_hours'] = ordens['delta_time_seconds'] / 3600
 ordens['delta_time_min'] = ordens['delta_time_seconds'] / 60
 
-# Padronizar os nomes das estações
-substituicoes = {
-    'MQS': 'SOLDAGEM',
-    'JPS': 'JATO',
-    'PLM001': 'PLM 001',
-    'PLM 01': 'PLM 001',
-    'SFH': 'CORTE - SERRA',
-    'SRC': 'CORTE - SERRA',
-    'TCNV': 'TORNO CONVENCIONAL',
-    'TCNC': 'TORNO CNC',
-    'LASER': 'CORTE-LASER',
-    'MCL': 'CORTE-LASER',
-    'PLM': 'CORTE-PLASMA',
-    'GLT': 'CORTE-GUILHOTINA',
-    'DGQ': 'QUALIDADE',
-    'FRZ 033': 'FRZ 003',
-    'FRZ003': 'FRZ 003',
-    'CNC 001': 'CENTRO DE USINAGEM',
-    'CCNC 001': 'CENTRO DE USINAGEM',
-    'CCNC001': 'CENTRO DE USINAGEM',
-    'CCNC01': 'CENTRO DE USINAGEM',
-    'Bancada': 'ACABAMENTO',
-    'BANCADA': 'ACABAMENTO',
-    'AJT': 'ACABAMENTO',
-    'FRZ': 'FRESADORAS',
-    'Acabamento': 'ACABAMENTO',
-    'DHCNC': 'DOBRA',
-    'DBEP': 'PRENSA (AMASSAMENTO)'
-}
+substituicoes = {'MQS': 'SOLDAGEM','JPS': 'JATO','PLM001': 'PLM 001','PLM 01': 'PLM 001','SFH': 'CORTE - SERRA','SRC': 'CORTE - SERRA','TCNV': 'TORNO CONVENCIONAL','TCNC': 'TORNO CNC','LASER': 'CORTE-LASER','MCL': 'CORTE-LASER','PLM': 'CORTE-PLASMA','GLT': 'CORTE-GUILHOTINA','DGQ': 'QUALIDADE','FRZ 033': 'FRZ 003','FRZ003': 'FRZ 003','CNC 001': 'CENTRO DE USINAGEM','CCNC 001': 'CENTRO DE USINAGEM','CCNC001': 'CENTRO DE USINAGEM','CCNC01': 'CENTRO DE USINAGEM','Bancada': 'ACABAMENTO','BANCADA': 'ACABAMENTO','AJT': 'ACABAMENTO','FRZ': 'FRESADORAS','Acabamento': 'ACABAMENTO','DHCNC': 'DOBRA','DBEP': 'PRENSA (AMASSAMENTO)'}
 
 for key, value in substituicoes.items():
     ordens.loc[ordens['estacao'].str.contains(key, na=False), 'estacao'] = value
 
-# Ajustar tipos de dados
 ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], errors='coerce')
 ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], errors='coerce')
 ordens["Ano"] = ordens["data_ini"].dt.year.astype('Int64')
@@ -147,22 +114,17 @@ ordens['delta_dia'] = (ordens['data_fim'] - ordens['data_ini']).dt.days
 ordens['hora_fim'] = pd.to_datetime(ordens['hora_fim'], format='%H:%M:%S', errors='coerce').dt.time
 ordens['hora_ini'] = pd.to_datetime(ordens['hora_ini'], format='%H:%M:%S', errors='coerce').dt.time
 
-# Condição para ajustar delta_dia
 midnight = ordens['Datetime_fim'].dt.normalize()
 seven_am = midnight + pd.Timedelta(hours=7)
 condition = (ordens['delta_dia'] == 1) & (ordens['Datetime_ini'] < midnight) & (ordens['Datetime_fim'] <= seven_am)
 ordens.loc[condition, 'delta_dia'] = 0
 
-# Aplicar funções customizadas
 ordens['weekends_count'] = ordens.apply(lambda row: count_weekend_days(row['data_ini'], row['data_fim']), axis=1)
 ordens = ordens.apply(adjust_delta_time_hours, axis=1)
 ordens = ordens.apply(adjust_delta_time, axis=1)
 ordens = ordens[ordens['delta_time_hours'] >= 0]
-
-# ordens = ordens[~((ordens['id'] == 17854) | (ordens['id'] == 17856) | (ordens['id'] == 17858))]
     
 ordens = ordens.sort_values("data_ini")
-
 
 tab1, tab2, tab3, tab4 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ", 'ANÁLISE MENSAL DE PEDIDOS'])
 
@@ -393,22 +355,22 @@ with tab4:
     with col23:
         target_year_2 = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), key=4,index= 1,placeholder ='Escolha uma opção')
 
-    pedidos = pedidos.drop_duplicates(subset=['pedido'], keep='first')
-    pedidos["entrega"] = pd.to_datetime(pedidos["entrega"], format='mixed', errors='coerce')
-    pedidos = pedidos[pedidos['entrega'].dt.month == target_month_2]
-    pedidos = pedidos[pedidos['entrega'].dt.year == target_year_2]
+    pedidos_1 = pedidos.drop_duplicates(subset=['pedido'], keep='first')
+    pedidos_1["entrega"] = pd.to_datetime(pedidos_1["entrega"], format='mixed', errors='coerce')
+    pedidos_1 = pedidos_1[pedidos_1['entrega'].dt.month == target_month_2]
+    pedidos_1 = pedidos_1[pedidos_1['entrega'].dt.year == target_year_2]
 
-    pedidos.loc[pedidos['cliente'].str.contains('WEG', na=False), 'cliente'] = 'WEG'
-    pedidos.loc[pedidos['cliente'].str.contains('GE', na=False), 'cliente'] = 'GE'
+    pedidos_1.loc[pedidos['cliente'].str.contains('WEG', na=False), 'cliente'] = 'WEG'
+    pedidos_1.loc[pedidos['cliente'].str.contains('GE', na=False), 'cliente'] = 'GE'
 
-    pedidos_clientes = pedidos.groupby('cliente').size().reset_index(name='Quantidade de Pedidos')
+    pedidos_clientes = pedidos_1.groupby('cliente').size().reset_index(name='Quantidade de Pedidos')
     pedidos_clientes.sort_values(by='Quantidade de Pedidos', ascending=False, inplace=True)
     pedidos_clientes.reset_index(drop=True, inplace=True)
 
     total = pedidos_clientes['Quantidade de Pedidos'].sum()
     pedidos_clientes['Porcentagem (%)'] = ((pedidos_clientes['Quantidade de Pedidos'] / total) * 100).round(2)
     
-    pedidos_pecas = pedidos.groupby('cliente')['quant_a_fat'].sum().reset_index()
+    pedidos_pecas = pedidos_1.groupby('cliente')['quant_a_fat'].sum().reset_index()
     pedidos_pecas.sort_values(by='quant_a_fat', ascending=False, inplace=True)
     pedidos_pecas.reset_index(drop=True, inplace=True)
     
