@@ -81,12 +81,22 @@ def get_hours_expected(estacao):
         'ACABAMENTO': 440
     }.get(estacao, 220)
 
+def inserir_hifen(valor):
+    if valor in ['HVHV30716401-1', 'HVHV30716401-2']:
+        prefixo, sufixo = valor.split('-')
+        novo_prefixo = prefixo[:-2] + '-' + prefixo[-2:]
+        return f"{novo_prefixo}-{sufixo}"
+    return valor
+
 st.set_page_config(layout="wide")   
 st.image('logo.png', width= 150)
 
 ordens = pd.read_csv('ordens (4).csv', sep=',')
 pedidos = pd.read_csv('pedidos (1).csv', sep=',')
-orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+orc = pd.read_excel('Z:/SGQ/Processos_de_Fabricacao.xlsx')
+
+pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
+
 
 ordens = ordens[ordens['estacao'] != 'Selecione...']
 
@@ -217,7 +227,7 @@ with tab1:
 
     somas = [pedidos_orc[coluna].sum() for coluna in colunas]
 
-    limites = {'FRESADORA': 440,'CORTE - SERRA': 440,'CORTE-PLASMA': 220,'CORTE-LASER': 220,'TORNO CONVENCIONAL': 440,'TORNO CNC': 220,'CENTRO DE USINAGEM': 220,'DOBRADEIRA': 220,'SOLDAGEM': 1100,'ACABAMENTO' : 440}
+    limites = {'FRESADORAS': 440,'CORTE - SERRA': 440,'CORTE-PLASMA': 220,'CORTE-LASER': 220,'TORNO CONVENCIONAL': 440,'TORNO CNC': 220,'CENTRO DE USINAGEM': 220,'DOBRADEIRA': 220,'SOLDAGEM': 1100,'ACABAMENTO' : 440}
     
     df_somas = pd.DataFrame({'Estação': colunas, 'Horas Orçadas': somas})
     df_somas['Limite de Horas'] = df_somas['Estação'].map(limites)
@@ -304,16 +314,21 @@ with tab3:
     pedido_cod = pedidos[pedidos['codprod'].str.contains(codprod_target, na=False)]
     filtro_df_cod = pedido_cod['ordem']
     ordem_cod = ordens[ordens['ordem'].isin(filtro_df_cod)]
+    ordem_cod = ordem_cod[ordem_cod['data_ini'].dt.year == 2024]
     merged_df = pd.merge(pedido_cod, ordem_cod, on='ordem', how='left')
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'] / merged_df['quant_a_fat']
     
-    index_of_first_occurrence = merged_df[((merged_df['matriz'] == 'SIM') & (~merged_df['descricao'].isna()))].index[0]
+    merged_df['delta_time_hours'] = merged_df['delta_time_hours'].replace([np.inf, -np.inf], np.nan)
+
+    index_of_first_occurrence = merged_df[((~merged_df['descricao'].isna()))].index[0]
     descricao_2 = merged_df.loc[index_of_first_occurrence, 'descricao']
 
     merged_df = merged_df.dropna(subset=['estacao', 'delta_time_hours'])
     merged_df = merged_df.groupby('estacao')['delta_time_hours'].mean().reset_index().round(2)
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'] * number_parts
-    tempo_total_medio = convert_to_HM(merged_df['delta_time_hours'].sum())
+    total_hours = merged_df['delta_time_hours'].sum(skipna=True)
+    total_hours_rounded = round(total_hours, 2)
+    tempo_total_medio = convert_to_HM(total_hours_rounded)
 
     if 'delta_time_hours' in merged_df.columns and merged_df['delta_time_hours'].notnull().all():
         merged_df['delta_time_hours'] = merged_df['delta_time_hours'].apply(convert_to_HM)
