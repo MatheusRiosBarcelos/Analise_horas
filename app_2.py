@@ -93,10 +93,9 @@ st.image('logo.png', width= 150)
 
 ordens = pd.read_csv('ordens (4).csv', sep=',')
 pedidos = pd.read_csv('pedidos (1).csv', sep=',')
-orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+orc = pd.read_excel('Z:/SGQ/Processos_de_Fabricacao.xlsx')
 
 pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
-
 
 ordens = ordens[ordens['estacao'] != 'Selecione...']
 
@@ -143,7 +142,6 @@ with tab1:
         estacao = st.selectbox("Estação", ordens["estacao"].sort_values().unique(), placeholder='Escolha uma opção')
         target_month = st.selectbox("Mês", ordens["Mes"].sort_values().unique(), key=1, index=0, placeholder='Escolha uma opção')
         target_year = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), key=2, index=1, placeholder='Escolha uma opção')
-
     
     new_df = ordens[ordens['estacao'] == estacao]
     df_filtrado_year = new_df[new_df['Datetime_ini'].dt.year == target_year]
@@ -172,7 +170,6 @@ with tab1:
 
     ordens_orc = ordens[(ordens['data_ini'].dt.month == target_month) & (ordens['data_ini'].dt.year == target_year)]
     total_de_horas_trabalhadas = ordens_orc['delta_time_hours'].sum().round(0)
-
 
     colunas = ['ACABAMENTO', 'CORTE - SERRA', 'CORTE-PLASMA', 'CORTE-LASER', 'CENTRO DE USINAGEM','DOBRADEIRA', 'FRESADORAS','TORNO CONVENCIONAL', 'TORNO CNC','SOLDAGEM']
 
@@ -267,7 +264,6 @@ with tab2:
     nova_linha = {'Estação de Trabalho': 'TOTAL', 'Tempo de uso total (H:M)': total_de_horas_pedido}
     soma_por_estacao = pd.concat([soma_por_estacao, pd.DataFrame([nova_linha])], ignore_index=True)
 
-
     fig = px.pie(soma_por_estacao, values='Tempo de uso total (H:M)', names='Estação de Trabalho', title='Proporção de Tempo de Uso por Máquina em Cada Pedido', width=800, height=500)
     fig.update_layout(title_yref='container',title_xanchor = 'center',title_x = 0.43, title_y = 0.95, legend=dict(font=dict(size=18)),font=dict(size=20), title_font=dict(size=20))
     col4.plotly_chart(fig, use_container_width=True)
@@ -352,7 +348,6 @@ with tab3:
                 if key in orc_codprod.columns and not pd.isna(row[key]):
                     tempo_esperado[key] = convert_to_HM((row[key] / 60) * number_parts)
 
-
     for estacao, tempo in tempo_esperado.items():
         if (merged_df['Operação'] == estacao).any():
             merged_df.loc[merged_df['Operação'] == estacao, 'Tempo no Orçamento'] = tempo
@@ -364,16 +359,10 @@ with tab3:
     col20.dataframe(merged_df, width= 1000,hide_index=True)
     
 with tab4:
-    col22,col23 = st.columns([0.5,0.5])
-    with col22:
-        target_month_2 = st.selectbox("Mês", ordens["Mes"].sort_values().unique(), key=3,index= 0,placeholder ='Escolha uma opção')
-    with col23:
-        target_year_2 = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), key=4,index= 1,placeholder ='Escolha uma opção')
-
     pedidos_1 = pedidos.drop_duplicates(subset=['pedido'], keep='first')
     pedidos_1["entrega"] = pd.to_datetime(pedidos_1["entrega"], format='mixed', errors='coerce')
-    pedidos_1 = pedidos_1[pedidos_1['entrega'].dt.month == target_month_2]
-    pedidos_1 = pedidos_1[pedidos_1['entrega'].dt.year == target_year_2]
+    pedidos_1 = pedidos_1[pedidos_1['entrega'].dt.month == target_month]
+    pedidos_1 = pedidos_1[pedidos_1['entrega'].dt.year == target_year]
 
     pedidos_1.loc[pedidos['cliente'].str.contains('WEG', na=False), 'cliente'] = 'WEG'
     pedidos_1.loc[pedidos['cliente'].str.contains('GE', na=False), 'cliente'] = 'GE'
@@ -422,7 +411,7 @@ with tab4:
 
     mes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Desembro']
 
-    st.markdown(f"<h1 style='text-align: center; color: black; font-size: {14}px; font-family: sans-serif; font-weight: normal;'>Total de Pedidos no mês de {mes[target_month_2-1]}</h1>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='text-align: center; color: black; font-size: {14}px; font-family: sans-serif; font-weight: normal;'>Total de Pedidos no mês de {mes[target_month-1]}</h1>", unsafe_allow_html=True)
     st.markdown(f"<h1 style='text-align: center; color: black; font-size: {30}px; font-family: sans-serif; font-weight: normal;'>{total_de_pedidos}</h1>", unsafe_allow_html=True)
 
     limite = 5
