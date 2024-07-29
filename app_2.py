@@ -88,12 +88,22 @@ def inserir_hifen(valor):
         return f"{novo_prefixo}-{sufixo}"
     return valor
 
+def color_rows(row):
+    # Customize this function to apply different styles based on row values
+    # Example: apply different background color based on 'Tempo de uso total (H:M)' value
+    if row['Tempo de uso total (H:M)'] == '00:00':
+        return ['background-color: lightgrey'] * len(row)
+    elif row['Tempo esperado no Orçamento'] is None:
+        return ['background-color: lightcoral'] * len(row)
+    else:
+        return [''] * len(row)
+
 st.set_page_config(layout="wide")   
 st.image('logo.png', width= 150)
 
 ordens = pd.read_csv('ordens (4).csv', sep=',')
 pedidos = pd.read_csv('pedidos (1).csv', sep=',')
-orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+orc = pd.read_excel('Z:/SGQ/Processos_de_Fabricacao.xlsx')
 
 pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
 
@@ -171,7 +181,7 @@ with tab1:
     ordens_orc = ordens[(ordens['data_ini'].dt.month == target_month) & (ordens['data_ini'].dt.year == target_year)]
     total_de_horas_trabalhadas = ordens_orc['delta_time_hours'].sum().round(0)
 
-    colunas = ['ACABAMENTO', 'CORTE - SERRA', 'CORTE-PLASMA', 'CORTE-LASER', 'CENTRO DE USINAGEM','DOBRADEIRA', 'FRESADORAS','TORNO CONVENCIONAL', 'TORNO CNC','SOLDAGEM']
+    colunas = ['ACABAMENTO', 'CORTE - SERRA', 'CORTE-PLASMA', 'CORTE-LASER', 'CENTRO DE USINAGEM','DOBRADEIRA', 'FRESADORAS','TORNO CONVENCIONAL', 'TORNO CNC','MONTAGEM','SOLDAGEM']
 
     for index, row in pedidos_orc.iterrows():
         for coluna in colunas:
@@ -179,7 +189,7 @@ with tab1:
                 # Use .loc to access the specific cell and assign the value
                 pedidos_orc.loc[index, coluna] = round((row[coluna]*row['quant_a_fat'])/60,0)
     
-    mapa_maquinas = {'CORTE - SERRA': 'CORTE - SERRA','FRESADORAS': 'FRESADORAS','CORTE-PLASMA': 'CORTE-PLASMA','CORTE-LASER': 'CORTE-LASER','CORTE-GUILHOTINA': 'CORTE-GUILHOTINA','TORNO CONVENCIONAL': 'TORNO CONVENCIONAL','TORNO CNC': 'TORNO CNC','CENTRO DE USINAGEM': 'CENTRO DE USINAGEM','SOLDAGEM': 'SOLDAGEM','ACABAMENTO': 'ACABAMENTO','DOBRA': 'DOBRADEIRA','PRENSA (AMASSAMENTO)' : 'PRENSA (AMASSAMENTO)','JATO' : 'JATEAMENTO'}
+    mapa_maquinas = {'CORTE - SERRA': 'CORTE - SERRA','FRESADORAS': 'FRESADORAS','CORTE-PLASMA': 'CORTE-PLASMA','CORTE-LASER': 'CORTE-LASER','CORTE-GUILHOTINA': 'CORTE-GUILHOTINA','TORNO CONVENCIONAL': 'TORNO CONVENCIONAL','TORNO CNC': 'TORNO CNC','CENTRO DE USINAGEM': 'CENTRO DE USINAGEM','SOLDAGEM': 'SOLDAGEM','ACABAMENTO': 'ACABAMENTO','DOBRA': 'DOBRADEIRA','PRENSA (AMASSAMENTO)' : 'PRENSA (AMASSAMENTO)','JATO' : 'JATEAMENTO','MONTAGEM':'MONTAGEM'}
     maquina = next((valor for chave, valor in mapa_maquinas.items() if chave in estacao), 'DESCONHECIDA')
     total_de_horas_orcadas_maquina = pedidos_orc[maquina].sum()
 
@@ -224,7 +234,7 @@ with tab1:
 
     somas = [pedidos_orc[coluna].sum() for coluna in colunas]
 
-    limites = {'FRESADORAS': 440,'CORTE - SERRA': 440,'CORTE-PLASMA': 220,'CORTE-LASER': 220,'TORNO CONVENCIONAL': 440,'TORNO CNC': 220,'CENTRO DE USINAGEM': 220,'DOBRADEIRA': 220,'SOLDAGEM': 1100,'ACABAMENTO' : 440}
+    limites = {'FRESADORAS': 440,'CORTE - SERRA': 440,'CORTE-PLASMA': 220,'CORTE-LASER': 220,'TORNO CONVENCIONAL': 440,'TORNO CNC': 220,'CENTRO DE USINAGEM': 220,'DOBRADEIRA': 220,'SOLDAGEM': 1100,'ACABAMENTO' : 440, 'MONTAGEM': 440}
     
     df_somas = pd.DataFrame({'Estação': colunas, 'Horas Orçadas': somas})
     df_somas['Limite de Horas'] = df_somas['Estação'].map(limites)
@@ -243,68 +253,91 @@ with tab1:
 
 with tab2:
     col9,col10 = st.columns([0.2,0.8])
-    with col9:
-        target_pv = st.selectbox("Selecione o PV", pedidos["pedido"].sort_values().unique(),index=1200,placeholder ='Escolha uma opção')
     
     col4, col5 = st.columns(2)
 
+    with col9:
+        target_pv = st.selectbox("Selecione o PV", pedidos["pedido"].sort_values().unique(),index=1200,placeholder ='Escolha uma opção')
+
     pedido = pedidos[pedidos['pedido'] == target_pv]
     descricao = pedido.iloc[0, 14]
+
+    with col10:
+        st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
+
     quant = pedido['quant_a_fat'].iloc[0]
     filtro_df = pedido['ordem']
     ordem = ordens[ordens['ordem'].isin(filtro_df)]
     codprod = pedido['codprod'].iloc[0]
     ordem = ordem.dropna(subset=['estacao', 'delta_time_hours'])
-   
+
     soma_por_estacao = ordem.groupby('estacao')['delta_time_hours'].sum().reset_index().round(2)
     soma_por_estacao.rename(columns={'delta_time_hours': 'Tempo de uso total (H:M)', 'estacao': 'Estação de Trabalho'}, inplace=True)
-    
+
+    fig = px.pie(soma_por_estacao, values='Tempo de uso total (H:M)', names='Estação de Trabalho', title='Proporção de Tempo de Uso por Máquina em Cada Pedido', width=800, height=500)
+    fig.update_layout(title_yref='container',title_xanchor = 'center',title_x = 0.43, title_y = 0.95, legend=dict(font=dict(size=18)),font=dict(size=20), title_font=dict(size=20))
+
     total_de_horas_pedido = soma_por_estacao['Tempo de uso total (H:M)'].sum()
 
     nova_linha = {'Estação de Trabalho': 'TOTAL', 'Tempo de uso total (H:M)': total_de_horas_pedido}
     soma_por_estacao = pd.concat([soma_por_estacao, pd.DataFrame([nova_linha])], ignore_index=True)
 
-    fig = px.pie(soma_por_estacao, values='Tempo de uso total (H:M)', names='Estação de Trabalho', title='Proporção de Tempo de Uso por Máquina em Cada Pedido', width=800, height=500)
-    fig.update_layout(title_yref='container',title_xanchor = 'center',title_x = 0.43, title_y = 0.95, legend=dict(font=dict(size=18)),font=dict(size=20), title_font=dict(size=20))
-    col4.plotly_chart(fig, use_container_width=True)
-       
     orc_codprod = orc[orc['CODIGO'] == codprod]
+
     tempo_esperado = {
-    'CORTE-PLASMA': None, 'CORTE - SERRA': None, 'CORTE-LASER': None, 'CORTE-GUILHOTINA': None,
-    'TORNO CONVENCIONAL': None, 'TORNO CNC': None, 'FRESADORAS': None, 'CENTRO DE USINAGEM': None,
-    'PRENSA (AMASSAMENTO)': None, 'DOBRADEIRA': None, 'ROSQUEADEIRA': None, 'FURADEIRA DE BANCADA': None,
-    'SOLDAGEM': None, 'ACABAMENTO': None, 'JATEAMENTO': None, 'PINTURA': None, 'MONTAGEM': None, 'CALANDRA': None,
-    'TOTAL': None
-    }    
+        'CORTE-PLASMA': None, 'CORTE - SERRA': None, 'CORTE-LASER': None, 'CORTE-GUILHOTINA': None,
+        'TORNO CONVENCIONAL': None, 'TORNO CNC': None, 'FRESADORAS': None, 'CENTRO DE USINAGEM': None,
+        'PRENSA (AMASSAMENTO)': None, 'DOBRADEIRA': None, 'ROSQUEADEIRA': None, 'FURADEIRA DE BANCADA': None,
+        'SOLDAGEM': None, 'ACABAMENTO': None, 'JATEAMENTO': None, 'PINTURA': None, 'MONTAGEM': None, 'CALANDRA': None,
+        'TOTAL': None
+    }
+
     if not orc_codprod.empty:
         for index, row in orc_codprod.iterrows():
             for key in tempo_esperado.keys():
                 if not pd.isna(row[key]):
                     tempo_esperado[key] = convert_to_HM((row[key] / 60) * quant)
 
-    soma_por_estacao['Tempo de uso total (H:M)'] = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_HM)
+    estacoes_todas = pd.DataFrame(list(tempo_esperado.keys()), columns=['Estação de Trabalho'])
+
+    soma_por_estacao = estacoes_todas.merge(soma_por_estacao, on='Estação de Trabalho', how='left')
+    soma_por_estacao['Tempo de uso total (H:M)'].fillna(0, inplace=True)
+    soma_por_estacao['Tempo de uso total (H:M)'] = soma_por_estacao['Tempo de uso total (H:M)'].apply(lambda x: convert_to_HM(x) if x != 0 else "Não Apontado")
     soma_por_estacao['Tempo esperado no Orçamento'] = soma_por_estacao['Estação de Trabalho'].map(tempo_esperado)
-    soma_por_estacao = soma_por_estacao[~soma_por_estacao['Estação de Trabalho'].isin(['ADM', 'QUALIDADE'])]
-    
+    soma_por_estacao = soma_por_estacao[~((soma_por_estacao['Tempo de uso total (H:M)'] == 'Não Apontado') & (soma_por_estacao['Tempo esperado no Orçamento'].isna()))]
+
+       
     col17,col18 = st.columns([0.9,0.1])
 
     soma_por_estacao  = soma_por_estacao[soma_por_estacao['Estação de Trabalho'] != 'ADM']
     soma_por_estacao  = soma_por_estacao[soma_por_estacao['Estação de Trabalho'] != 'QUALIDADE']
+    soma_por_estacao = soma_por_estacao.reset_index(drop=True)
     
+    col4.plotly_chart(fig, use_container_width=True)
     with col5:
         st.markdown(f"<h1 style='font-size: 20px;'>Tabela de Horas por Estação no PV {target_pv}/Número de peças é {quant}</h1>", unsafe_allow_html=True)
-    col5.dataframe(soma_por_estacao, width= 600,hide_index=True)
-    with col10:
-        st.markdown(f"<h1 style='text-align: left;'>{descricao}</h1>", unsafe_allow_html=True)
-
+    
+    header_styles = {
+    'selector': 'th.col_heading',
+    'props': [('background-color', 'lightblue'), 
+              ('color', 'black'),
+              ('font-size', '14px'),
+              ('font-weight', 'bold')]
+}
+    col5.table(soma_por_estacao.style.set_table_styles([header_styles]))
+    
     col60,col61 = st.columns([0.9,0.1])
     colunas_selecionadas = ['ordem', 'estacao', 'nome_func', 'Datetime_ini', 'Datetime_fim']
     ordem['ordem'] = ordem['ordem'].astype(str)
+    ordem_colunas_selecionas = ordem[colunas_selecionadas]
+    ordem_colunas_selecionas = ordem_colunas_selecionas.reset_index(drop=True)
+    ordem_colunas_selecionas.rename(columns={'ordem': 'Ordem', 'nome_func': 'Nome Colaborador', 'Datetime_ini': 'Data/Hora Inicial', 'Datetime_fim': 'Data/Hora Final'}, inplace=True)
+
     with col60:
-        col60.dataframe(ordem[colunas_selecionadas], use_container_width=True,hide_index=True)
+        col60.table(ordem_colunas_selecionas.style.set_table_styles([header_styles]))
     
 with tab3:
-    codprod_target = st.text_input("Código do Produto", value= '14303600')
+    codprod_target = st.text_input("Código do Produto", value= 'HVHV307164-01')
     number_parts = st.number_input("Quantas peças são", value=int(1), placeholder="Type a number...")
 
     pedido_cod = pedidos[pedidos['codprod'].str.contains(codprod_target, na=False)]
@@ -356,7 +389,9 @@ with tab3:
 
     col20,col21 = st.columns([0.9,0.1])
 
-    col20.dataframe(merged_df, width= 1000,hide_index=True)
+    col20.table(merged_df.style.set_table_styles([header_styles]))
+
+    # col20.dataframe(merged_df, width= 1000,hide_index=True)
     
 with tab4:
     pedidos_1 = pedidos.drop_duplicates(subset=['pedido'], keep='first')
