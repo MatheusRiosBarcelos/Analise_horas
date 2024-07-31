@@ -88,22 +88,12 @@ def inserir_hifen(valor):
         return f"{novo_prefixo}-{sufixo}"
     return valor
 
-def color_rows(row):
-    # Customize this function to apply different styles based on row values
-    # Example: apply different background color based on 'Tempo de uso total (H:M)' value
-    if row['Tempo de uso total (H:M)'] == '00:00':
-        return ['background-color: lightgrey'] * len(row)
-    elif row['Tempo esperado no Orçamento'] is None:
-        return ['background-color: lightcoral'] * len(row)
-    else:
-        return [''] * len(row)
-
 st.set_page_config(layout="wide")   
 st.image('logo.png', width= 150)
 
 ordens = pd.read_csv('ordens (4).csv', sep=',')
 pedidos = pd.read_csv('pedidos (1).csv', sep=',')
-orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+orc = pd.read_excel('Z:/SGQ/Processos_de_Fabricacao.xlsx')
 
 pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
 
@@ -119,7 +109,7 @@ ordens['delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime_ini'])
 ordens['delta_time_hours'] = ordens['delta_time_seconds'] / 3600
 ordens['delta_time_min'] = ordens['delta_time_seconds'] / 60
 
-substituicoes = {'MQS': 'SOLDAGEM','JPS': 'JATO','PLM001': 'PLM 001','PLM 01': 'PLM 001','SFH': 'CORTE - SERRA','SRC': 'CORTE - SERRA','TCNV': 'TORNO CONVENCIONAL','TCNC': 'TORNO CNC','LASER': 'CORTE-LASER','MCL': 'CORTE-LASER','PLM': 'CORTE-PLASMA','GLT': 'CORTE-GUILHOTINA','DGQ': 'QUALIDADE','FRZ 033': 'FRZ 003','FRZ003': 'FRZ 003','CNC 001': 'CENTRO DE USINAGEM','CCNC 001': 'CENTRO DE USINAGEM','CCNC001': 'CENTRO DE USINAGEM','CCNC01': 'CENTRO DE USINAGEM','Bancada': 'ACABAMENTO','BANCADA': 'ACABAMENTO','AJT': 'ACABAMENTO','FRZ': 'FRESADORAS','Acabamento': 'ACABAMENTO','DHCNC': 'DOBRA','DBEP': 'PRENSA (AMASSAMENTO)'}
+substituicoes = {'MQS': 'SOLDAGEM','JPS': 'JATO','PLM001': 'PLM 001','PLM 01': 'PLM 001','SFH': 'CORTE - SERRA','SRC': 'CORTE - SERRA','TCNV': 'TORNO CONVENCIONAL','TCNC': 'TORNO CNC','LASER': 'CORTE-LASER','MCL': 'CORTE-LASER','PLM': 'CORTE-PLASMA','GLT': 'CORTE-GUILHOTINA','DGQ': 'QUALIDADE','FRZ 033': 'FRZ 003','FRZ003': 'FRZ 003','CNC 001': 'CENTRO DE USINAGEM','CCNC 001': 'CENTRO DE USINAGEM','CCNC001': 'CENTRO DE USINAGEM','CCNC01': 'CENTRO DE USINAGEM','Bancada': 'ACABAMENTO','BANCADA': 'ACABAMENTO','AJT': 'ACABAMENTO','FRZ': 'FRESADORAS','Acabamento': 'ACABAMENTO','DHCNC': 'DOBRADEIRA','DHCN': 'DOBRADEIRA','DBEP': 'PRENSA (AMASSAMENTO)'}
 
 for key, value in substituicoes.items():
     ordens.loc[ordens['estacao'].str.contains(key, na=False), 'estacao'] = value
@@ -181,7 +171,7 @@ with tab1:
     ordens_orc = ordens[(ordens['data_ini'].dt.month == target_month) & (ordens['data_ini'].dt.year == target_year)]
     total_de_horas_trabalhadas = ordens_orc['delta_time_hours'].sum().round(0)
 
-    colunas = ['ACABAMENTO', 'CORTE - SERRA', 'CORTE-PLASMA', 'CORTE-LASER', 'CENTRO DE USINAGEM','DOBRADEIRA', 'FRESADORAS','TORNO CONVENCIONAL', 'TORNO CNC','MONTAGEM','SOLDAGEM']
+    colunas = ['ACABAMENTO', 'CORTE - SERRA', 'CORTE-PLASMA', 'CORTE-LASER', 'CENTRO DE USINAGEM','DOBRADEIRA','PRENSA (AMASSAMENTO)', 'FRESADORAS','TORNO CONVENCIONAL', 'TORNO CNC','MONTAGEM','SOLDAGEM']
 
     for index, row in pedidos_orc.iterrows():
         for coluna in colunas:
@@ -234,7 +224,7 @@ with tab1:
 
     somas = [pedidos_orc[coluna].sum() for coluna in colunas]
 
-    limites = {'FRESADORAS': 440,'CORTE - SERRA': 440,'CORTE-PLASMA': 220,'CORTE-LASER': 220,'TORNO CONVENCIONAL': 440,'TORNO CNC': 220,'CENTRO DE USINAGEM': 220,'DOBRADEIRA': 220,'SOLDAGEM': 1100,'ACABAMENTO' : 440, 'MONTAGEM': 440}
+    limites = {'FRESADORAS': 440,'CORTE - SERRA': 440,'CORTE-PLASMA': 220,'CORTE-LASER': 220,'TORNO CONVENCIONAL': 440,'TORNO CNC': 220,'CENTRO DE USINAGEM': 220,'DOBRADEIRA': 220,'SOLDAGEM': 1100,'ACABAMENTO' : 440, 'MONTAGEM': 440, 'PRENSA (AMASSAMENTO)':220}
     
     df_somas = pd.DataFrame({'Estação': colunas, 'Horas Orçadas': somas})
     df_somas['Limite de Horas'] = df_somas['Estação'].map(limites)
@@ -390,8 +380,6 @@ with tab3:
     col20,col21 = st.columns([0.9,0.1])
 
     col20.table(merged_df.style.set_table_styles([header_styles]))
-
-    # col20.dataframe(merged_df, width= 1000,hide_index=True)
     
 with tab4:
     pedidos_1 = pedidos.drop_duplicates(subset=['pedido'], keep='first')
