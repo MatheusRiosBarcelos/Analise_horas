@@ -4,6 +4,8 @@ import plotly.express as px
 from datetime  import datetime as dt , timedelta
 import numpy as np
 import plotly.graph_objects as go
+import requests
+import pytz
 
 def convert_to_HM(x):
     hours = float(x)
@@ -88,12 +90,45 @@ def inserir_hifen(valor):
         return f"{novo_prefixo}-{sufixo}"
     return valor
 
-st.set_page_config(layout="wide")   
-st.image('logo.png', width= 150)
+def get_last_commit_date(repo_owner, repo_name):
+    url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits"
+    response = requests.get(url)
+    commits = response.json()
+    if commits:
+        last_commit = commits[0]
+        commit_date = last_commit['commit']['committer']['date']
+        return dt.strptime(commit_date, "%Y-%m-%dT%H:%M:%SZ")
+    else:
+        return None
+
+def convert_to_brasilia_time(utc_datetime):
+    utc_zone = pytz.utc
+    brasilia_zone = pytz.timezone('America/Sao_Paulo')
+    utc_datetime = utc_zone.localize(utc_datetime)
+    brasilia_datetime = utc_datetime.astimezone(brasilia_zone)
+    return brasilia_datetime
+
+
+st.set_page_config(layout="wide") 
+colA, colB = st.columns([0.8,0.2])
+
+repo_owner = "MatheusRiosBarcelos"
+repo_name = "Analise_horas"
+last_commit_date = get_last_commit_date(repo_owner, repo_name)
+with colA:
+    st.image('logo.png', width= 150)
+
+with colB:
+    if last_commit_date:
+        last_commit_date_brasilia = convert_to_brasilia_time(last_commit_date)
+        st.write(f"Última atualização: {last_commit_date_brasilia.strftime('%d/%m/%Y %H:%M:%S')}")
+    else:
+        st.write("Não foi possível obter a data do último commit.")
+
 
 ordens = pd.read_csv('ordens (4).csv', sep=',')
 pedidos = pd.read_csv('pedidos (1).csv', sep=',')
-orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+orc = pd.read_excel('Z:/SGQ/Processos_de_Fabricacao.xlsx')
 
 pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
 
@@ -134,6 +169,10 @@ ordens = ordens.apply(adjust_delta_time, axis=1)
 ordens = ordens[ordens['delta_time_hours'] >= 0]
     
 ordens = ordens.sort_values("data_ini")
+
+
+
+
 
 tab1, tab2, tab3, tab4 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ", 'ANÁLISE MENSAL DE PEDIDOS'])
 
@@ -234,7 +273,7 @@ with tab1:
     df_long = df_somas.melt(id_vars='Estação', value_vars=['Horas Orçadas', 'Horas Restantes'], var_name='Tipo', value_name='Horas')
 
     fig_71 = px.bar(df_long, x='Estação', y='Horas', color='Tipo', text_auto='.2s', color_discrete_sequence=['#e53737', '#FFCECE'])
-    fig_71.update_layout(width=800, height=500, title_x=0.45, title_y=0.95, title_xanchor='center', xaxis_title='Mês', xaxis=dict(tickfont=dict(size=14)), legend=dict(font=dict(size=14)), title=dict(text=f'Horas Orçadas e Restantes por Estação no mês {target_month}', font=dict(size=18)))
+    fig_71.update_layout(width=800, height=500, title_x=0.45, title_y=0.95, title_xanchor='center', xaxis=dict(tickfont=dict(size=14)), legend=dict(font=dict(size=14)), title=dict(text=f'Horas Orçadas e Restantes por Estação no mês {target_month}', font=dict(size=18)))
     fig_71.update_traces(textfont_size=18, textangle=0, textposition="outside", cliponaxis=False)
  
     col71,col72 = st.columns([0.9,0.1])
