@@ -112,18 +112,18 @@ def convert_to_brasilia_time(utc_datetime):
 st.set_page_config(layout="wide") 
 colA, colB = st.columns([0.8,0.2])
 
-# repo_owner = "MatheusRiosBarcelos"
-# repo_name = "Analise_horas"
-# last_commit_date = get_last_commit_date(repo_owner, repo_name)
-# with colA:
-#     st.image('logo.png', width= 150)
+repo_owner = "MatheusRiosBarcelos"
+repo_name = "Analise_horas"
+last_commit_date = get_last_commit_date(repo_owner, repo_name)
+with colA:
+    st.image('logo.png', width= 150)
 
-# with colB:
-#     if last_commit_date:
-#         last_commit_date_brasilia = convert_to_brasilia_time(last_commit_date)
-#         st.write(f"Última atualização: {last_commit_date_brasilia.strftime('%d/%m/%Y %H:%M:%S')}")
-#     else:
-#         st.write("Não foi possível obter a data do último commit.")
+with colB:
+    if last_commit_date:
+        last_commit_date_brasilia = convert_to_brasilia_time(last_commit_date)
+        st.write(f"Última atualização: {last_commit_date_brasilia.strftime('%d/%m/%Y %H:%M:%S')}")
+    else:
+        st.write("Não foi possível obter a data do último commit.")
 
 
 ordens = pd.read_csv('ordens (4).csv', sep=',')
