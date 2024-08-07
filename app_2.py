@@ -94,12 +94,13 @@ def get_last_commit_date(repo_owner, repo_name):
     url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits"
     response = requests.get(url)
     commits = response.json()
+    
     if commits:
         last_commit = commits[0]
         commit_date = last_commit['commit']['committer']['date']
         return dt.strptime(commit_date, "%Y-%m-%dT%H:%M:%SZ")
     else:
-        return None
+        raise ValueError("No commits found for the specified repository.")
 
 def convert_to_brasilia_time(utc_datetime):
     utc_zone = pytz.utc
@@ -114,7 +115,12 @@ colA, colB = st.columns([0.8,0.2])
 
 repo_owner = "MatheusRiosBarcelos"
 repo_name = "Analise_horas"
-last_commit_date = get_last_commit_date(repo_owner, repo_name)
+try:
+    last_commit_date = get_last_commit_date(repo_owner, repo_name)
+    print(last_commit_date)
+except ValueError as e:
+    print(e)
+
 with colA:
     st.image('logo.png', width= 150)
 
@@ -128,7 +134,7 @@ with colB:
 
 ordens = pd.read_csv('ordens (4).csv', sep=',')
 pedidos = pd.read_csv('pedidos (1).csv', sep=',')
-orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+orc = pd.read_excel('Z:/SGQ/Processos_de_Fabricacao.xlsx')
 
 pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
 
@@ -234,7 +240,7 @@ with tab1:
 
     ordem_2 = df_filtrado_year.groupby(['estacao', df_filtrado_year['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
     ordem_2.rename(columns={'delta_time_hours': 'Tempo de uso total (H)', 'Datetime_ini': 'Mês'}, inplace=True)
-    fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= f'Eficiência Mensal {estacao} (%)',text_auto='.2s', width=350, height=500)
+    fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= f'Eficiência Mensal {estacao} (%)',text_auto='.2s', width=350, height=700)
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
     fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.55, title_y = 0.95,title_xanchor = 'center',xaxis=dict(tickfont=dict(size=14)))
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
@@ -247,7 +253,7 @@ with tab1:
     y['delta_time_hours'] = ((y['delta_time_hours'] / 3300) * 100).round(2)
     y['delta_time_hours_label'] = y['delta_time_hours'].apply(lambda x: f"{x:.0f}%")
 
-    fig21 = px.bar(y, x = 'Datetime_ini', y = 'delta_time_hours',title= f'Eficiência Mensal Total da Fábrica (%)',text='delta_time_hours_label', width=350, height=500)
+    fig21 = px.bar(y, x = 'Datetime_ini', y = 'delta_time_hours',title= f'Eficiência Mensal Total da Fábrica (%)',text='delta_time_hours_label', width=350, height=700)
     fig21.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
     fig21.update_layout(yaxis_title = 'Eficiência (%)', xaxis_title = 'Mês', title_x = 0.55, title_y = 0.95,title_xanchor = 'center',xaxis=dict(tickfont=dict(size=14)))
     fig21.update_xaxes(tickvals=list(range(len(y)+1)))
@@ -273,7 +279,7 @@ with tab1:
     df_long = df_somas.melt(id_vars='Estação', value_vars=['Horas Orçadas', 'Horas Restantes'], var_name='Tipo', value_name='Horas')
 
     fig_71 = px.bar(df_long, x='Estação', y='Horas', color='Tipo', text_auto='.2s', color_discrete_sequence=['#e53737', '#FFCECE'])
-    fig_71.update_layout(width=800, height=500, title_x=0.45, title_y=0.95, title_xanchor='center', xaxis=dict(tickfont=dict(size=14)), legend=dict(font=dict(size=14)), title=dict(text=f'Horas Orçadas e Restantes por Estação no mês {target_month}', font=dict(size=18)))
+    fig_71.update_layout(width=800, height=700, title_x=0.45, title_y=0.95, title_xanchor='center', xaxis=dict(tickfont=dict(size=14)), legend=dict(font=dict(size=14),orientation = 'h',yanchor='top',y=-0.2,xanchor='center',x=0.5), title=dict(text=f'Horas Orçadas e Restantes por Estação no mês {target_month}', font=dict(size=18)))
     fig_71.update_traces(textfont_size=18, textangle=0, textposition="outside", cliponaxis=False)
  
     col71,col72 = st.columns([0.9,0.1])
