@@ -114,7 +114,6 @@ def get_last_commit_date(repo_owner, repo_name):
     else:
         raise ValueError("No commits found or unexpected response format.")
 
-
 def convert_to_brasilia_time(utc_datetime):
     utc_zone = pytz.utc
     brasilia_zone = pytz.timezone('America/Sao_Paulo')
@@ -248,7 +247,10 @@ with tab1:
 
     ordem_2 = df_filtrado_year.groupby(['estacao', df_filtrado_year['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
     ordem_2.rename(columns={'delta_time_hours': 'Tempo de uso total (H)', 'Datetime_ini': 'Mês'}, inplace=True)
-    fig2 = px.bar(ordem_2, x = 'Mês', y = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int),title= f'Eficiência Mensal {estacao} (%)',text_auto='.2s', width=350, height=600)
+    ordem_2['Tempo de uso total (H)'] = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int)
+    ordem_2['Tempo de uso total (H)_label'] = ordem_2['Tempo de uso total (H)'].apply(lambda x: f"{x:.0f}%")
+
+    fig2 = px.bar(ordem_2, x = 'Mês', y ='Tempo de uso total (H)' ,title= f'Eficiência Mensal {estacao} (%)',text='Tempo de uso total (H)_label', width=350, height=600)
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
     fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.55, title_y = 0.95,title_xanchor = 'center',xaxis=dict(tickfont=dict(size=14)))
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
