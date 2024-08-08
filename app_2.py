@@ -122,7 +122,6 @@ def convert_to_brasilia_time(utc_datetime):
     brasilia_datetime = utc_datetime.astimezone(brasilia_zone)
     return brasilia_datetime
 
-
 st.set_page_config(layout="wide") 
 colA, colB = st.columns([0.8,0.2])
 
