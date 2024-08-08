@@ -93,14 +93,27 @@ def inserir_hifen(valor):
 def get_last_commit_date(repo_owner, repo_name):
     url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits"
     response = requests.get(url)
+    
+    # Verificar o status da resposta
+    if response.status_code != 200:
+        raise ValueError(f"Failed to retrieve commits. Status code: {response.status_code}")
+    
     commits = response.json()
     
-    if commits:
+    # Imprimir a resposta para diagnóstico
+    print("Response JSON:", commits)
+    
+    if isinstance(commits, list) and len(commits) > 0:
         last_commit = commits[0]
-        commit_date = last_commit['commit']['committer']['date']
-        return dt.strptime(commit_date, "%Y-%m-%dT%H:%M:%SZ")
+        # Verificar a presença dos campos esperados
+        if 'commit' in last_commit and 'committer' in last_commit['commit'] and 'date' in last_commit['commit']['committer']:
+            commit_date = last_commit['commit']['committer']['date']
+            return dt.strptime(commit_date, "%Y-%m-%dT%H:%M:%SZ")
+        else:
+            raise ValueError("Expected fields are missing in the commit data.")
     else:
-        raise ValueError("No commits found for the specified repository.")
+        raise ValueError("No commits found or unexpected response format.")
+
 
 def convert_to_brasilia_time(utc_datetime):
     utc_zone = pytz.utc
