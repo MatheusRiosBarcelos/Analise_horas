@@ -4,3 +4,6 @@ numpy
 datetime
 seaborn
 openpyxl
+requests
+pytz
+streamlit
