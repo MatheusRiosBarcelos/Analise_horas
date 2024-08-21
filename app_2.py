@@ -77,11 +77,11 @@ def create_pie_chart(df, values_column, names_column, title):
 
 def get_hours_expected(estacao):
     return {
-        'SOLDAGEM': 1100,
-        'FRESADORAS': 440,
-        'TORNO CONVENCIONAL': 440,
-        'ACABAMENTO': 440
-    }.get(estacao, 220)
+        'SOLDAGEM': 980,
+        'FRESADORAS': 392,
+        'TORNO CONVENCIONAL': 392,
+        'ACABAMENTO': 392
+    }.get(estacao,196)
 
 def inserir_hifen(valor):
     if valor in ['HVHV30716401-1', 'HVHV30716401-2']:
@@ -142,14 +142,12 @@ with colB:
     else:
         st.write("Não foi possível obter a data do último commit.")
 
-
 ordens = pd.read_csv('ordens (4).csv', sep=',')
 pedidos = pd.read_csv('pedidos (1).csv', sep=',')
 orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
 
 pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
 pedidos["entrega"] = pd.to_datetime(pedidos["entrega"], format = 'mixed', errors='coerce')
-
 
 ordens = ordens[ordens['estacao'] != 'Selecione...']
 
@@ -230,7 +228,6 @@ with tab1:
     for index, row in pedidos_orc.iterrows():
         for coluna in colunas:
             if not pd.isna(row[coluna]):
-                # Use .loc to access the specific cell and assign the value
                 pedidos_orc.loc[index, coluna] = round((row[coluna]*row['quant_a_fat'])/60,0)
     
     mapa_maquinas = {'CORTE - SERRA': 'CORTE - SERRA','FRESADORAS': 'FRESADORAS','CORTE-PLASMA': 'CORTE-PLASMA','CORTE-LASER': 'CORTE-LASER','CORTE-GUILHOTINA': 'CORTE-GUILHOTINA','TORNO CONVENCIONAL': 'TORNO CONVENCIONAL','TORNO CNC': 'TORNO CNC','CENTRO DE USINAGEM': 'CENTRO DE USINAGEM','SOLDAGEM': 'SOLDAGEM','ACABAMENTO': 'ACABAMENTO','DOBRA': 'DOBRADEIRA','PRENSA (AMASSAMENTO)' : 'PRENSA (AMASSAMENTO)','JATO' : 'JATEAMENTO','MONTAGEM':'MONTAGEM'}
@@ -262,7 +259,7 @@ with tab1:
     x = x.groupby(['estacao', x['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
     x = x[x['estacao'].isin(['CORTE - SERRA', 'TORNO CONVENCIONAL', 'TORNO CNC', 'FRESADORAS', 'CENTRO DE USINAGEM', 'CORTE-PLASMA', 'CORTE-LASER', 'CORTE-GUILHOTINA', 'DOBRA', 'SOLDAGEM', 'ACABAMENTO'])]
     y = x.groupby('Datetime_ini')['delta_time_hours'].sum().reset_index().round(2)
-    y['delta_time_hours'] = ((y['delta_time_hours'] / 3300) * 100).round(2)
+    y['delta_time_hours'] = ((y['delta_time_hours'] / 2940) * 100).round(2)
     y['delta_time_hours_label'] = y['delta_time_hours'].apply(lambda x: f"{x:.0f}%")
 
     fig21 = px.bar(y, x = 'Datetime_ini', y = 'delta_time_hours',title= f'Eficiência Mensal Total da Fábrica (%)',text='delta_time_hours_label', width=350, height=600)
@@ -283,7 +280,7 @@ with tab1:
 
     somas = [pedidos_orc[coluna].sum() for coluna in colunas]
 
-    limites = {'FRESADORAS': 440,'CORTE - SERRA': 440,'CORTE-PLASMA': 220,'CORTE-LASER': 220,'TORNO CONVENCIONAL': 440,'TORNO CNC': 220,'CENTRO DE USINAGEM': 220,'DOBRADEIRA': 220,'SOLDAGEM': 1100,'ACABAMENTO' : 440, 'MONTAGEM': 440, 'PRENSA (AMASSAMENTO)':220}
+    limites = {'FRESADORAS': 392,'CORTE - SERRA': 392,'CORTE-PLASMA': 196,'CORTE-LASER': 196,'TORNO CONVENCIONAL': 392,'TORNO CNC': 196,'CENTRO DE USINAGEM': 196,'DOBRADEIRA': 196,'SOLDAGEM': 980,'ACABAMENTO' : 392, 'MONTAGEM': 392, 'PRENSA (AMASSAMENTO)':196}
     
     df_somas = pd.DataFrame({'Estação': colunas, 'Horas Orçadas': somas})
     df_somas['Limite de Horas'] = df_somas['Estação'].map(limites)
