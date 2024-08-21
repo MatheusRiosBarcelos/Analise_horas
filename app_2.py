@@ -148,6 +148,8 @@ pedidos = pd.read_csv('pedidos (1).csv', sep=',')
 orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
 
 pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
+pedidos["entrega"] = pd.to_datetime(pedidos["entrega"], format = 'mixed', errors='coerce')
+
 
 ordens = ordens[ordens['estacao'] != 'Selecione...']
 
@@ -191,9 +193,10 @@ tab1, tab2, tab3, tab4 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE 
 
 with tab1:
     with st.sidebar:
+        date_now = dt.now()
         estacao = st.selectbox("Estação", ordens["estacao"].sort_values().unique(), placeholder='Escolha uma opção')
-        target_month = st.selectbox("Mês", ordens["Mes"].sort_values().unique(), key=1, index=0, placeholder='Escolha uma opção')
-        target_year = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), key=2, index=1, placeholder='Escolha uma opção')
+        target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=date_now.month, placeholder='Escolha uma opção')
+        target_year = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), key=2, index=0, placeholder='Escolha uma opção')
     
     new_df = ordens[ordens['estacao'] == estacao]
     df_filtrado_year = new_df[new_df['Datetime_ini'].dt.year == target_year]
@@ -211,7 +214,6 @@ with tab1:
     col2.metric(f'Eficiência (%) da Máquina {estacao}', f'{percent_horas}%', f'{delta_1}%')
     col3.metric(f"Média da Máquina {estacao}", f"{media}H")
     
-    pedidos["entrega"] = pd.to_datetime(pedidos["entrega"], format = 'mixed', errors='coerce')
     pedidos['codprod'] = pedidos['codprod'].astype(str)
     orc['CODIGO'] = orc['CODIGO'].astype(str)
 
