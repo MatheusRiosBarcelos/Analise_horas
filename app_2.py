@@ -296,7 +296,8 @@ with tab1:
     fig2 = px.bar(ordem_2, x = 'Mês', y ='Tempo de uso total (H)' ,title= f'Eficiência Mensal<br>{estacao} (%)',text='Tempo de uso total (H)_label', width=350, height=600)
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
     fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.55, title_y = 0.95,title_xanchor = 'center',xaxis=dict(tickfont=dict(size=14)),title=dict(font=dict(size=16)))
-    fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
+    fig2.update_xaxes(tickmode='linear',dtick=1)
+
     col11.plotly_chart(fig2)
 
     x = ordens[ordens['Datetime_ini'].dt.year == target_year]
