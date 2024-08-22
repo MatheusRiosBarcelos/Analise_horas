@@ -77,10 +77,8 @@ def create_pie_chart(df, values_column, names_column, title):
 
 def get_hours_expected(estacao):
     return {
-        'SOLDAGEM': 980,
-        'FRESADORAS': 392,
-        'TORNO CONVENCIONAL': 392,
-        'ACABAMENTO': 392
+        'CORTE - SERRA': 392
+        
     }.get(estacao,196)
 
 def inserir_hifen(valor):
@@ -161,7 +159,25 @@ ordens['delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime_ini'])
 ordens['delta_time_hours'] = ordens['delta_time_seconds'] / 3600
 ordens['delta_time_min'] = ordens['delta_time_seconds'] / 60
 
-substituicoes = {'MQS': 'SOLDAGEM','JPS': 'JATO','PLM001': 'PLM 001','PLM 01': 'PLM 001','SFH': 'CORTE - SERRA','SRC': 'CORTE - SERRA','TCNV': 'TORNO CONVENCIONAL','TCNC': 'TORNO CNC','LASER': 'CORTE-LASER','MCL': 'CORTE-LASER','PLM': 'CORTE-PLASMA','GLT': 'CORTE-GUILHOTINA','DGQ': 'QUALIDADE','FRZ 033': 'FRZ 003','FRZ003': 'FRZ 003','CNC 001': 'CENTRO DE USINAGEM','CCNC 001': 'CENTRO DE USINAGEM','CCNC001': 'CENTRO DE USINAGEM','CCNC01': 'CENTRO DE USINAGEM','Bancada': 'ACABAMENTO','BANCADA': 'ACABAMENTO','AJT': 'ACABAMENTO','FRZ': 'FRESADORAS','Acabamento': 'ACABAMENTO','DHCNC': 'DOBRADEIRA','DHCN': 'DOBRADEIRA','DBEP': 'PRENSA (AMASSAMENTO)'}
+ordens.loc[ordens['nome_func'].str.contains('GUSTAVO'), 'nome_func'] = 'LUIS GUSTAVO'
+ordens.loc[ordens['nome_func'].str.contains('PEDRO'), 'nome_func'] = 'PEDRO'
+ordens.loc[ordens['nome_func'].str.contains('LUCAS'), 'nome_func'] = 'LUCAS ASSIS'
+ordens.loc[ordens['nome_func'].str.contains('CLEYTON'), 'nome_func'] = 'CLEYTON'
+ordens.loc[ordens['nome_func'].str.contains('FABRICIO'), 'nome_func'] = 'FABRICIO'
+ordens.loc[ordens['nome_func'].str.contains('MARCOS'), 'nome_func'] = 'ANTONIO MARCOS'
+ordens.loc[ordens['nome_func'].str.contains('BATISTA'), 'nome_func'] = 'JOÃO BATISTA'
+ordens.loc[ordens['nome_func'].str.contains('GIOVANNI'), 'nome_func'] = 'GIOVANNI'
+ordens.loc[ordens['nome_func'].str.contains('SIDNEY'), 'nome_func'] = 'SIDNEY'
+ordens.loc[ordens['nome_func'].str.contains('PAULO'), 'nome_func'] = 'JOÃO PAULO'
+ordens.loc[ordens['nome_func'].str.contains('VAL'), 'nome_func'] = 'VALDEMIR'
+
+ordens.loc[ordens['estacao'].str.contains('TCNC'), 'estacao'] = ('TORNO CNC' + ' - ' + ordens['nome_func'])
+ordens.loc[ordens['estacao'].str.contains('MQS'), 'estacao'] = ('SOLDA' + ' - ' + ordens['nome_func'])
+ordens.loc[ordens['estacao'].str.contains('TCNV'), 'estacao'] = ('TORNO CONV.' + ' - ' + ordens['nome_func'])
+ordens.loc[ordens['estacao'].str.contains('FRZ'), 'estacao'] = ('FRESADORA' + ' - ' + ordens['nome_func'])
+
+
+substituicoes = {'JPS': 'JATO','PLM001': 'PLM 001','PLM 01': 'PLM 001','SFH': 'CORTE - SERRA','SRC': 'CORTE - SERRA','TCNC': 'TORNO CNC - JOÃO BATISTA','LASER': 'CORTE-LASER','MCL': 'CORTE-LASER','PLM': 'CORTE-PLASMA','GLT': 'CORTE-GUILHOTINA','DGQ': 'QUALIDADE','FRZ 033': 'FRZ 003','FRZ003': 'FRZ 003','CNC 001': 'CENTRO DE USINAGEM','CCNC 001': 'CENTRO DE USINAGEM','CCNC001': 'CENTRO DE USINAGEM','CCNC01': 'CENTRO DE USINAGEM','Bancada': 'ACABAMENTO','BANCADA': 'ACABAMENTO','AJT': 'ACABAMENTO','Acabamento': 'ACABAMENTO','DHCNC': 'DOBRADEIRA','DHCN': 'DOBRADEIRA','DBEP': 'PRENSA (AMASSAMENTO)'}
 
 for key, value in substituicoes.items():
     ordens.loc[ordens['estacao'].str.contains(key, na=False), 'estacao'] = value
@@ -189,10 +205,38 @@ ordens = ordens.sort_values("data_ini")
 
 tab1, tab2, tab3, tab4 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ", 'ANÁLISE MENSAL DE PEDIDOS'])
 
+lista_estacoes = [
+    'FRESADORA - VALDEMIR',
+    'FRESADORAS - GIOVANNI',
+    'FRESADORA - JOÃO PAULO',
+    'FRESADORA - SIDNEY',
+    'TORNO CONV. - SIDNEY',
+    'TORNO CONV. - GIOVANNI',
+    'TORNO CONV. - JOAO BATISTA',
+    'TORNO CONV. - PEDRO',
+    'TORNO CONV. - ANTONIO MARCOS',
+    'SOLDA - CLEYTON',
+    'SOLDA - LUIS GUSTAVO',
+    'SOLDA - LUCAS ASSIS',
+    'SOLDA - FABRICIO',
+    'SOLDA - PABLO',
+    'CORTE - SERRA',
+    'CORTE-PLASMA',
+    'CORTE-LASER',
+    'CORTE-GUILHOTINA',
+    'TORNO CNC - JOÃO BATISTA',
+    'CENTRO DE USINAGEM',
+    'ACABAMENTO',
+    'DOBRA',
+    'PRENSA (AMASSAMENTO)',
+    'JATO',
+    'MONTAGEM'
+]
+lista_estacoes.sort()
 with tab1:
     with st.sidebar:
         date_now = dt.now()
-        estacao = st.selectbox("Estação", ordens["estacao"].sort_values().unique(), placeholder='Escolha uma opção')
+        estacao = st.selectbox("Estação", lista_estacoes, placeholder='Escolha uma opção')
         target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=date_now.month, placeholder='Escolha uma opção')
         target_year = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), key=2, index=0, placeholder='Escolha uma opção')
     
@@ -230,7 +274,7 @@ with tab1:
             if not pd.isna(row[coluna]):
                 pedidos_orc.loc[index, coluna] = round((row[coluna]*row['quant_a_fat'])/60,0)
     
-    mapa_maquinas = {'CORTE - SERRA': 'CORTE - SERRA','FRESADORAS': 'FRESADORAS','CORTE-PLASMA': 'CORTE-PLASMA','CORTE-LASER': 'CORTE-LASER','CORTE-GUILHOTINA': 'CORTE-GUILHOTINA','TORNO CONVENCIONAL': 'TORNO CONVENCIONAL','TORNO CNC': 'TORNO CNC','CENTRO DE USINAGEM': 'CENTRO DE USINAGEM','SOLDAGEM': 'SOLDAGEM','ACABAMENTO': 'ACABAMENTO','DOBRA': 'DOBRADEIRA','PRENSA (AMASSAMENTO)' : 'PRENSA (AMASSAMENTO)','JATO' : 'JATEAMENTO','MONTAGEM':'MONTAGEM'}
+    mapa_maquinas = {'FRESADORA - VALDEMIR': 'FRESADORAS','FRESADORAS - GIOVANNI':'FRESADORAS','FRESADORA - JOÃO PAULO':'FRESADORAS','FRESADORA - SIDNEY':'FRESADORAS','TORNO CONV. - SIDNEY': 'TORNO CONVENCIONAL','TORNO CONV. - GIOVANNI': 'TORNO CONVENCIONAL','TORNO CONV. - JOAO BATISTA': 'TORNO CONVENCIONAL','TORNO CONV. - PEDRO': 'TORNO CONVENCIONAL','TORNO CONV. - ANTONIO MARCOS': 'TORNO CONVENCIONAL','SOLDA - CLEYTON':'SOLDAGEM','SOLDA - LUIS GUSTAVO':'SOLDAGEM','SOLDA - LUCAS ASSIS':'SOLDAGEM','SOLDA - FABRICIO':'SOLDAGEM','SOLDA - PABLO':'SOLDAGEM','CORTE - SERRA': 'CORTE - SERRA','CORTE-PLASMA': 'CORTE-PLASMA','CORTE-LASER': 'CORTE-LASER','CORTE-GUILHOTINA': 'CORTE-GUILHOTINA','TORNO CNC': 'TORNO CNC','CENTRO DE USINAGEM': 'CENTRO DE USINAGEM','ACABAMENTO': 'ACABAMENTO','DOBRA': 'DOBRADEIRA','PRENSA (AMASSAMENTO)' : 'PRENSA (AMASSAMENTO)','JATO' : 'JATEAMENTO','MONTAGEM':'MONTAGEM'}
     maquina = next((valor for chave, valor in mapa_maquinas.items() if chave in estacao), 'DESCONHECIDA')
     total_de_horas_orcadas_maquina = pedidos_orc[maquina].sum()
 
@@ -249,15 +293,14 @@ with tab1:
     ordem_2['Tempo de uso total (H)'] = (ordem_2['Tempo de uso total (H)']/hora_esperada_de_trabalho*100).astype(int)
     ordem_2['Tempo de uso total (H)_label'] = ordem_2['Tempo de uso total (H)'].apply(lambda x: f"{x:.0f}%")
 
-    fig2 = px.bar(ordem_2, x = 'Mês', y ='Tempo de uso total (H)' ,title= f'Eficiência Mensal {estacao} (%)',text='Tempo de uso total (H)_label', width=350, height=600)
+    fig2 = px.bar(ordem_2, x = 'Mês', y ='Tempo de uso total (H)' ,title= f'Eficiência Mensal<br>{estacao} (%)',text='Tempo de uso total (H)_label', width=350, height=600)
     fig2.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
-    fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.55, title_y = 0.95,title_xanchor = 'center',xaxis=dict(tickfont=dict(size=14)))
+    fig2.update_layout(yaxis_title = 'Eficiência (%)', title_x = 0.55, title_y = 0.95,title_xanchor = 'center',xaxis=dict(tickfont=dict(size=14)),title=dict(font=dict(size=16)))
     fig2.update_xaxes(tickvals=list(range(len(ordem_2)+1)))
     col11.plotly_chart(fig2)
 
     x = ordens[ordens['Datetime_ini'].dt.year == target_year]
     x = x.groupby(['estacao', x['Datetime_ini'].dt.month])['delta_time_hours'].sum().reset_index().round(2)
-    x = x[x['estacao'].isin(['CORTE - SERRA', 'TORNO CONVENCIONAL', 'TORNO CNC', 'FRESADORAS', 'CENTRO DE USINAGEM', 'CORTE-PLASMA', 'CORTE-LASER', 'CORTE-GUILHOTINA', 'DOBRA', 'SOLDAGEM', 'ACABAMENTO'])]
     y = x.groupby('Datetime_ini')['delta_time_hours'].sum().reset_index().round(2)
     y['delta_time_hours'] = ((y['delta_time_hours'] / 2940) * 100).round(2)
     y['delta_time_hours_label'] = y['delta_time_hours'].apply(lambda x: f"{x:.0f}%")
@@ -267,16 +310,6 @@ with tab1:
     fig21.update_layout(yaxis_title = 'Eficiência (%)', xaxis_title = 'Mês', title_x = 0.55, title_y = 0.95,title_xanchor = 'center',xaxis=dict(tickfont=dict(size=14)))
     fig21.update_xaxes(tickvals=list(range(len(y)+1)))
     col12.plotly_chart(fig21)
-
-    fig20 = go.Figure(data=go.Heatmap(
-            z=x['delta_time_hours'],
-            x=x['Datetime_ini'],
-            y=x['estacao'],
-            colorscale='Reds'),
-            )
-
-    fig20.update_layout(title='Mapa de Calor Horas trabalhadas Mensalmente', width=500, height= 500,title_x = 0.55, title_y = 0.95,title_xanchor = 'center', xaxis_title = 'Mês',xaxis=dict(tickfont=dict(size=14)))
-    fig20.update_xaxes(tickvals=list(range(len(x)+1)))
 
     somas = [pedidos_orc[coluna].sum() for coluna in colunas]
 
@@ -295,8 +328,6 @@ with tab1:
 
     col13.plotly_chart(fig_71)
     
-    col71.plotly_chart(fig20)
-
 with tab2:
     col9,col10 = st.columns([0.2,0.8])
     
