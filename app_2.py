@@ -159,7 +159,7 @@ ordens['delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime_ini'])
 ordens['delta_time_hours'] = ordens['delta_time_seconds'] / 3600
 ordens['delta_time_min'] = ordens['delta_time_seconds'] / 60
 
-substituicoes = {'JPS': 'JATO','PLM001': 'PLM 001','PLM 01': 'PLM 001','SFH': 'CORTE - SERRA','SRC': 'CORTE - SERRA','TCNC': 'TORNO CNC','LASER': 'CORTE-LASER','MCL': 'CORTE-LASER','PLM': 'CORTE-PLASMA','GLT': 'CORTE-GUILHOTINA','DGQ': 'QUALIDADE','FRZ 033': 'FRZ 003','FRZ003': 'FRZ 003','CNC 001': 'CENTRO DE USINAGEM','CCNC 001': 'CENTRO DE USINAGEM','CCNC001': 'CENTRO DE USINAGEM','CCNC01': 'CENTRO DE USINAGEM','Bancada': 'ACABAMENTO','BANCADA': 'ACABAMENTO','AJT': 'ACABAMENTO','Acabamento': 'ACABAMENTO','DHCNC': 'DOBRADEIRA','DHCN': 'DOBRADEIRA','DBEP': 'PRENSA (AMASSAMENTO)'}
+substituicoes = {'JPS': 'JATO','FRZ': 'FRESADORAS','TCNV': 'TORNO CONVENCIONAL','MQS': 'SOLDAGEM','PLM001': 'PLM 001','PLM 01': 'PLM 001','SFH': 'CORTE - SERRA','SRC': 'CORTE - SERRA','TCNC': 'TORNO CNC','LASER': 'CORTE-LASER','MCL': 'CORTE-LASER','PLM': 'CORTE-PLASMA','GLT': 'CORTE-GUILHOTINA','DGQ': 'QUALIDADE','FRZ 033': 'FRZ 003','FRZ003': 'FRZ 003','CNC 001': 'CENTRO DE USINAGEM','CCNC 001': 'CENTRO DE USINAGEM','CCNC001': 'CENTRO DE USINAGEM','CCNC01': 'CENTRO DE USINAGEM','Bancada': 'ACABAMENTO','BANCADA': 'ACABAMENTO','AJT': 'ACABAMENTO','Acabamento': 'ACABAMENTO','DHCNC': 'DOBRADEIRA','DHCN': 'DOBRADEIRA','DBEP': 'PRENSA (AMASSAMENTO)'}
 
 for key, value in substituicoes.items():
     ordens.loc[ordens['estacao'].str.contains(key, na=False), 'estacao'] = value
@@ -184,7 +184,7 @@ ordens = ordens.apply(adjust_delta_time, axis=1)
 ordens = ordens[ordens['delta_time_hours'] >= 0]
 ordens = ordens.sort_values("data_ini")
 
-ordem = ordens
+ordem = ordens.copy()
 
 ordens.loc[ordens['nome_func'].str.contains('GUSTAVO'), 'nome_func'] = 'LUIS GUSTAVO'
 ordens.loc[ordens['nome_func'].str.contains('PEDRO'), 'nome_func'] = 'PEDRO'
@@ -197,10 +197,10 @@ ordens.loc[ordens['nome_func'].str.contains('GIOVANNI'), 'nome_func'] = 'GIOVANN
 ordens.loc[ordens['nome_func'].str.contains('SIDNEY'), 'nome_func'] = 'SIDNEY'
 ordens.loc[ordens['nome_func'].str.contains('PAULO'), 'nome_func'] = 'JOÃO PAULO'
 ordens.loc[ordens['nome_func'].str.contains('VAL'), 'nome_func'] = 'VALDEMIR'
-ordens.loc[ordens['estacao'].str.contains('TCNC'), 'estacao'] = ('TORNO CNC' + ' - ' + ordens['nome_func'])
-ordens.loc[ordens['estacao'].str.contains('MQS'), 'estacao'] = ('SOLDA' + ' - ' + ordens['nome_func'])
-ordens.loc[ordens['estacao'].str.contains('TCNV'), 'estacao'] = ('TORNO CONV.' + ' - ' + ordens['nome_func'])
-ordens.loc[ordens['estacao'].str.contains('FRZ'), 'estacao'] = ('FRESADORA' + ' - ' + ordens['nome_func'])
+ordens.loc[ordens['estacao'].str.contains('TORNO CNC'), 'estacao'] = ('TORNO CNC' + ' - ' + ordens['nome_func'])
+ordens.loc[ordens['estacao'].str.contains('SOLDAGEM'), 'estacao'] = ('SOLDA' + ' - ' + ordens['nome_func'])
+ordens.loc[ordens['estacao'].str.contains('TORNO CONVENCIONAL'), 'estacao'] = ('TORNO CONV.' + ' - ' + ordens['nome_func'])
+ordens.loc[ordens['estacao'].str.contains('FRESADORAS'), 'estacao'] = ('FRESADORA' + ' - ' + ordens['nome_func'])
 
 
 tab1, tab2, tab3, tab4 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ", 'ANÁLISE MENSAL DE PEDIDOS'])
@@ -345,7 +345,7 @@ with tab2:
 
     quant = pedido['quant_a_fat'].iloc[0]
     filtro_df = pedido['ordem']
-    ordem = ordem[ordens['ordem'].isin(filtro_df)]
+    ordem = ordem[ordem['ordem'].isin(filtro_df)]
     codprod = pedido['codprod'].iloc[0]
     ordem = ordem.dropna(subset=['estacao', 'delta_time_hours'])
 
@@ -420,7 +420,7 @@ with tab3:
 
     pedido_cod = pedidos[pedidos['codprod'].str.contains(codprod_target, na=False)]
     filtro_df_cod = pedido_cod['ordem']
-    ordem_cod = ordens[ordens['ordem'].isin(filtro_df_cod)]
+    ordem_cod = ordem[ordens['ordem'].isin(filtro_df_cod)]
     ordem_cod = ordem_cod[ordem_cod['data_ini'].dt.year == 2024]
     merged_df = pd.merge(pedido_cod, ordem_cod, on='ordem', how='left')
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'] / merged_df['quant_a_fat']
