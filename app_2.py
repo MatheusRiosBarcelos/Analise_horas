@@ -6,6 +6,8 @@ import numpy as np
 import plotly.graph_objects as go
 import requests
 import pytz
+from sqlalchemy import create_engine
+
 
 def convert_to_HM(x):
     hours = float(x)
@@ -119,41 +121,71 @@ def convert_to_brasilia_time(utc_datetime):
     brasilia_datetime = utc_datetime.astimezone(brasilia_zone)
     return brasilia_datetime
 
+def format_timedelta(td):
+    total_seconds = int(td.total_seconds())
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f'{hours:02}:{minutes:02}:{seconds:02}'
+
 st.set_page_config(layout="wide") 
 colA, colB = st.columns([0.8,0.2])
 
-repo_owner = "MatheusRiosBarcelos"
-repo_name = "Analise_horas"
-try:
-    last_commit_date = get_last_commit_date(repo_owner, repo_name)
-    print(last_commit_date)
-except ValueError as e:
-    print(e)
+# repo_owner = "MatheusRiosBarcelos"
+# repo_name = "Analise_horas"
+# try:
+#     last_commit_date = get_last_commit_date(repo_owner, repo_name)
+#     print(last_commit_date)
+# except ValueError as e:
+#     print(e)
 
 with colA:
     st.image('logo.png', width= 150)
 
-with colB:
-    if last_commit_date:
-        last_commit_date_brasilia = convert_to_brasilia_time(last_commit_date)
-        st.write(f"Última atualização: {last_commit_date_brasilia.strftime('%d/%m/%Y %H:%M:%S')}")
-    else:
-        st.write("Não foi possível obter a data do último commit.")
+# with colB:
+#     if last_commit_date:
+#         last_commit_date_brasilia = convert_to_brasilia_time(last_commit_date)
+#         st.write(f"Última atualização: {last_commit_date_brasilia.strftime('%d/%m/%Y %H:%M:%S')}")
+#     else:
+#         st.write("Não foi possível obter a data do último commit.")
 
-ordens = pd.read_csv('ordens (4).csv', sep=',')
-pedidos = pd.read_csv('pedidos (1).csv', sep=',')
+
+username = 'usinag87_matheus'
+password = '%40Elohim32'
+host = 'usinagemelohim.com.br'
+port = '3306'
+database = 'usinag87_controleprod'
+
+connection_string = f'mysql+mysqlconnector://{username}:{password}@{host}:{port}/{database}'
+
+engine = create_engine(connection_string)
+
+query_ordens = "SELECT * FROM ordens"
+query_pedidos = "SELECT * FROM pedidos"
+ordens = pd.read_sql(query_ordens, engine)
+pedidos = pd.read_sql(query_pedidos,engine)
+
+# ordens = pd.read_csv('ordens (4).csv', sep=',')
+# pedidos = pd.read_csv('pedidos (1).csv', sep=',')
 orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
 
 pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
 pedidos["entrega"] = pd.to_datetime(pedidos["entrega"], format = 'mixed', errors='coerce')
 
 ordens = ordens[ordens['estacao'] != 'Selecione...']
+ordens.dropna(subset=['ordem', 'data_ini', 'hora_ini','data_fim','hora_fim'], inplace=True)
 
-ordens.fillna({'ordem': 0, 'data_ini': 0, 'hora_ini': 0}, inplace=True)
+ordens['hora_ini'] = ordens['hora_ini'].apply(format_timedelta)
+ordens['hora_fim'] = ordens['hora_fim'].apply(format_timedelta)
+
+ordens['Datetime_ini'] = pd.to_datetime(ordens['data_ini'].astype(str) + ' ' + ordens['hora_ini'], errors='coerce')
+ordens['Datetime_fim'] = pd.to_datetime(ordens['data_fim'].astype(str) + ' ' + ordens['hora_fim'], errors='coerce')
+
+ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], errors='coerce')
+ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], errors='coerce')
+
+ordens = ordens[ordens['data_ini'].dt.year >= 2024]
+
 ordens['ordem'] = ordens['ordem'].astype(int)
-
-ordens['Datetime_ini'] = pd.to_datetime(ordens['data_ini'] + ' ' + ordens['hora_ini'], errors='coerce')
-ordens['Datetime_fim'] = pd.to_datetime(ordens['data_fim'] + ' ' + ordens['hora_fim'], errors='coerce')
 
 ordens['delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime_ini']).dt.total_seconds()
 ordens['delta_time_hours'] = ordens['delta_time_seconds'] / 3600
@@ -164,8 +196,6 @@ substituicoes = {'JPS': 'JATO','FRZ': 'FRESADORAS','TCNV': 'TORNO CONVENCIONAL',
 for key, value in substituicoes.items():
     ordens.loc[ordens['estacao'].str.contains(key, na=False), 'estacao'] = value
 
-ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], errors='coerce')
-ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], errors='coerce')
 ordens["Ano"] = ordens["data_ini"].dt.year.astype('Int64')
 ordens["Mes"] = ordens["data_ini"].dt.month.astype('Int64')
 
@@ -185,7 +215,7 @@ ordens = ordens[ordens['delta_time_hours'] >= 0]
 ordens = ordens.sort_values("data_ini")
 
 ordem = ordens.copy()
-
+pedido = pedidos.copy()
 ordens.loc[ordens['nome_func'].str.contains('GUSTAVO'), 'nome_func'] = 'LUIS GUSTAVO'
 ordens.loc[ordens['nome_func'].str.contains('PEDRO'), 'nome_func'] = 'PEDRO'
 ordens.loc[ordens['nome_func'].str.contains('LUCAS'), 'nome_func'] = 'LUCAS ASSIS'
@@ -337,7 +367,8 @@ with tab2:
     with col9:
         target_pv = st.selectbox("Selecione o PV", pedidos["pedido"].sort_values().unique(),index=1200,placeholder ='Escolha uma opção')
 
-    pedido = pedidos[pedidos['pedido'] == target_pv]
+    pedido = pedido[pedido['pedido'] == target_pv]
+
     descricao = pedido.iloc[0, 14]
 
     with col10:
@@ -345,11 +376,14 @@ with tab2:
 
     quant = pedido['quant_a_fat'].iloc[0]
     filtro_df = pedido['ordem']
-    ordem = ordem[ordem['ordem'].isin(filtro_df)]
+    filtro_df = filtro_df.astype(int)
+    ordem_ped = ordem.copy()
+    ordem_ped['ordem'] = ordem['ordem'].astype(int)
+    ordem_ped = ordem_ped[ordem_ped['ordem'].isin(filtro_df)]
     codprod = pedido['codprod'].iloc[0]
-    ordem = ordem.dropna(subset=['estacao', 'delta_time_hours'])
+    ordem_ped= ordem_ped.dropna(subset=['estacao', 'delta_time_hours'])
 
-    soma_por_estacao = ordem.groupby('estacao')['delta_time_hours'].sum().reset_index().round(2)
+    soma_por_estacao = ordem_ped.groupby('estacao')['delta_time_hours'].sum().reset_index().round(2)
     soma_por_estacao.rename(columns={'delta_time_hours': 'Tempo de uso total (H:M)', 'estacao': 'Estação de Trabalho'}, inplace=True)
 
     fig = px.pie(soma_por_estacao, values='Tempo de uso total (H:M)', names='Estação de Trabalho', title='Proporção de Tempo de Uso por Máquina em Cada Pedido', width=800, height=500)
@@ -420,7 +454,7 @@ with tab3:
 
     pedido_cod = pedidos[pedidos['codprod'].str.contains(codprod_target, na=False)]
     filtro_df_cod = pedido_cod['ordem']
-    ordem_cod = ordem[ordens['ordem'].isin(filtro_df_cod)]
+    ordem_cod = ordem[ordem['ordem'].isin(filtro_df_cod)]
     ordem_cod = ordem_cod[ordem_cod['data_ini'].dt.year == 2024]
     merged_df = pd.merge(pedido_cod, ordem_cod, on='ordem', how='left')
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'] / merged_df['quant_a_fat']
