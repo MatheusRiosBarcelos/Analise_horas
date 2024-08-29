@@ -440,8 +440,8 @@ with tab2:
     
     col60,col61 = st.columns([0.9,0.1])
     colunas_selecionadas = ['ordem', 'estacao', 'nome_func', 'Datetime_ini', 'Datetime_fim']
-    ordem['ordem'] = ordem['ordem'].astype(str)
-    ordem_colunas_selecionas = ordem[colunas_selecionadas]
+    ordem_ped['ordem'] = ordem_ped['ordem'].astype(str)
+    ordem_colunas_selecionas = ordem_ped[colunas_selecionadas]
     ordem_colunas_selecionas = ordem_colunas_selecionas.reset_index(drop=True)
     ordem_colunas_selecionas.rename(columns={'ordem': 'Ordem', 'nome_func': 'Nome Colaborador', 'Datetime_ini': 'Data/Hora Inicial', 'Datetime_fim': 'Data/Hora Final'}, inplace=True)
 
