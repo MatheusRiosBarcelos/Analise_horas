@@ -8,7 +8,6 @@ import requests
 import pytz
 from sqlalchemy import create_engine
 
-
 def convert_to_HM(x):
     hours = float(x)
     h = int(hours)
@@ -130,24 +129,8 @@ def format_timedelta(td):
 st.set_page_config(layout="wide") 
 colA, colB = st.columns([0.8,0.2])
 
-# repo_owner = "MatheusRiosBarcelos"
-# repo_name = "Analise_horas"
-# try:
-#     last_commit_date = get_last_commit_date(repo_owner, repo_name)
-#     print(last_commit_date)
-# except ValueError as e:
-#     print(e)
-
 with colA:
     st.image('logo.png', width= 150)
-
-# with colB:
-#     if last_commit_date:
-#         last_commit_date_brasilia = convert_to_brasilia_time(last_commit_date)
-#         st.write(f"Última atualização: {last_commit_date_brasilia.strftime('%d/%m/%Y %H:%M:%S')}")
-#     else:
-#         st.write("Não foi possível obter a data do último commit.")
-
 
 username = 'usinag87_matheus'
 password = '%40Elohim32'
@@ -164,8 +147,6 @@ query_pedidos = "SELECT * FROM pedidos"
 ordens = pd.read_sql(query_ordens, engine)
 pedidos = pd.read_sql(query_pedidos,engine)
 
-# ordens = pd.read_csv('ordens (4).csv', sep=',')
-# pedidos = pd.read_csv('pedidos (1).csv', sep=',')
 orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
 
 pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
@@ -191,7 +172,34 @@ ordens['delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime_ini'])
 ordens['delta_time_hours'] = ordens['delta_time_seconds'] / 3600
 ordens['delta_time_min'] = ordens['delta_time_seconds'] / 60
 
-substituicoes = {'JPS': 'JATO','FRZ': 'FRESADORAS','TCNV': 'TORNO CONVENCIONAL','MQS': 'SOLDAGEM','PLM001': 'PLM 001','PLM 01': 'PLM 001','SFH': 'CORTE - SERRA','SRC': 'CORTE - SERRA','TCNC': 'TORNO CNC','LASER': 'CORTE-LASER','MCL': 'CORTE-LASER','PLM': 'CORTE-PLASMA','GLT': 'CORTE-GUILHOTINA','DGQ': 'QUALIDADE','FRZ 033': 'FRZ 003','FRZ003': 'FRZ 003','CNC 001': 'CENTRO DE USINAGEM','CCNC 001': 'CENTRO DE USINAGEM','CCNC001': 'CENTRO DE USINAGEM','CCNC01': 'CENTRO DE USINAGEM','Bancada': 'ACABAMENTO','BANCADA': 'ACABAMENTO','AJT': 'ACABAMENTO','Acabamento': 'ACABAMENTO','DHCNC': 'DOBRADEIRA','DHCN': 'DOBRADEIRA','DBEP': 'PRENSA (AMASSAMENTO)'}
+substituicoes = {
+                 'JPS': 'JATO',
+                 'FRZ': 'FRESADORAS',
+                 'TCNV': 'TORNO CONVENCIONAL',
+                 'MQS': 'SOLDAGEM',
+                 'PLM001': 'PLM 001',
+                 'PLM 01': 'PLM 001',
+                 'SFH': 'CORTE - SERRA',
+                 'SRC': 'CORTE - SERRA',
+                 'TCNC': 'TORNO CNC',
+                 'LASER': 'CORTE-LASER',
+                 'MCL': 'CORTE-LASER',
+                 'PLM': 'CORTE-PLASMA',
+                 'GLT': 'CORTE-GUILHOTINA',
+                 'DGQ': 'QUALIDADE',
+                 'FRZ 033': 'FRZ 003',
+                 'FRZ003': 'FRZ 003',
+                 'CNC 001': 'CENTRO DE USINAGEM',
+                 'CCNC 001': 'CENTRO DE USINAGEM',
+                 'CCNC001': 'CENTRO DE USINAGEM',
+                 'CCNC01': 'CENTRO DE USINAGEM',
+                 'Bancada': 'ACABAMENTO',
+                 'BANCADA': 'ACABAMENTO',
+                 'AJT': 'ACABAMENTO',
+                 'Acabamento': 'ACABAMENTO',
+                 'DHCNC': 'DOBRADEIRA',
+                 'DHCN': 'DOBRADEIRA',
+                 'DBEP': 'PRENSA (AMASSAMENTO)'}
 
 for key, value in substituicoes.items():
     ordens.loc[ordens['estacao'].str.contains(key, na=False), 'estacao'] = value
@@ -216,6 +224,7 @@ ordens = ordens.sort_values("data_ini")
 
 ordem = ordens.copy()
 pedido = pedidos.copy()
+
 ordens.loc[ordens['nome_func'].str.contains('GUSTAVO'), 'nome_func'] = 'LUIS GUSTAVO'
 ordens.loc[ordens['nome_func'].str.contains('PEDRO'), 'nome_func'] = 'PEDRO'
 ordens.loc[ordens['nome_func'].str.contains('LUCAS'), 'nome_func'] = 'LUCAS ASSIS'
@@ -232,8 +241,11 @@ ordens.loc[ordens['estacao'].str.contains('SOLDAGEM'), 'estacao'] = ('SOLDA' + '
 ordens.loc[ordens['estacao'].str.contains('TORNO CONVENCIONAL'), 'estacao'] = ('TORNO CONV.' + ' - ' + ordens['nome_func'])
 ordens.loc[ordens['estacao'].str.contains('FRESADORAS'), 'estacao'] = ('FRESADORA' + ' - ' + ordens['nome_func'])
 
-
-tab1, tab2, tab3, tab4 = st.tabs(["ANÁLISE HORA DE TRABALHO MENSAL", "ANÁLISE HORA DE TRABALHO POR PV", "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ", 'ANÁLISE MENSAL DE PEDIDOS'])
+tab1, tab2, tab3, tab4 = st.tabs([
+                                "ANÁLISE HORA DE TRABALHO MENSAL",
+                                "ANÁLISE HORA DE TRABALHO POR PV",
+                                "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ",
+                                "ANÁLISE MENSAL DE PEDIDOS"])
 
 lista_estacoes = [
     'FRESADORA - VALDEMIR',
@@ -378,7 +390,7 @@ with tab2:
     filtro_df = pedido['ordem']
     filtro_df = filtro_df.astype(int)
     ordem_ped = ordem.copy()
-    ordem_ped['ordem'] = ordem['ordem'].astype(int)
+    ordem_ped['ordem'] = ordem_ped['ordem'].astype(int)
     ordem_ped = ordem_ped[ordem_ped['ordem'].isin(filtro_df)]
     codprod = pedido['codprod'].iloc[0]
     ordem_ped= ordem_ped.dropna(subset=['estacao', 'delta_time_hours'])
@@ -454,7 +466,11 @@ with tab3:
 
     pedido_cod = pedidos[pedidos['codprod'].str.contains(codprod_target, na=False)]
     filtro_df_cod = pedido_cod['ordem']
-    ordem_cod = ordem[ordem['ordem'].isin(filtro_df_cod)]
+    
+    ordem_cod = ordem.copy()
+    ordem_cod['ordem'] = ordem_cod['ordem'].astype(str)
+    ordem_cod = ordem_cod[ordem_cod['ordem'].isin(filtro_df_cod)]
+
     ordem_cod = ordem_cod[ordem_cod['data_ini'].dt.year == 2024]
     merged_df = pd.merge(pedido_cod, ordem_cod, on='ordem', how='left')
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'] / merged_df['quant_a_fat']
