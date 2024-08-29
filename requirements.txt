@@ -7,3 +7,5 @@ openpyxl
 requests
 pytz
 streamlit
+sqlalchemy
+mysql-connector-python
