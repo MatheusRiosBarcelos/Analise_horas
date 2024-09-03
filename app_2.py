@@ -7,6 +7,9 @@ import plotly.graph_objects as go
 import requests
 import pytz
 from sqlalchemy import create_engine
+import xml.etree.ElementTree as ET
+from io import StringIO
+from streamlit_autorefresh import st_autorefresh
 
 def convert_to_HM(x):
     hours = float(x)
@@ -121,12 +124,58 @@ def convert_to_brasilia_time(utc_datetime):
     return brasilia_datetime
 
 def format_timedelta(td):
+    if pd.isna(td):
+        return None  # Ou retorne uma string vazia, por exemplo: ''
+    
     total_seconds = int(td.total_seconds())
     hours, remainder = divmod(total_seconds, 3600)
     minutes, seconds = divmod(remainder, 60)
+    
     return f'{hours:02}:{minutes:02}:{seconds:02}'
 
-st.set_page_config(layout="wide") 
+def update_svg(svg_path, data, pedidos):
+    ET.register_namespace('', 'http://www.w3.org/2000/svg')
+    tree = ET.parse(svg_path)
+    root = tree.getroot()
+
+    namespace = {'ns': 'http://www.w3.org/2000/svg'}
+    
+    color_map = {'running': '#3ACC55', 'stopped': '#FC1010'}
+    
+    for machine in data.itertuples():
+        try:
+            status = machine.status
+            if status not in color_map:
+                st.write(f"Status '{status}' não encontrado no color_map")
+                continue
+            
+            element = root.find(f".//ns:*[@id='{machine.estacao}']", namespace)
+            
+            pedido = pedidos[pedidos.ordem == machine.ordem]
+            
+            if element is not None:
+                element.set('style', f'fill: {color_map[status]};')
+                
+                for title in element.findall('ns:title', namespace):
+                    element.remove(title)
+
+                title_element = ET.SubElement(element, 'title')
+                title_element.text = f"Estação: {machine.estacao}\nFuncionário: {machine.nome_func}\nPV: {pedido.pedido.iloc[0]}\nOrdem: {machine.ordem}\nPeça: {pedido.descricao.iloc[0]}\nInício: {machine.hora_ini}\nData Entrega: {pedido.entrega.iloc[0]}"
+            else:
+                # st.write(f"Elemento com ID '{machine.estacao}' não encontrado no SVG")
+                continue
+        
+        except Exception as e:
+            st.write(f"Erro ao processar máquina {machine.estacao}: {e}")
+    
+    svg_data = StringIO()
+    tree.write(svg_data, encoding='unicode')
+    
+    return svg_data.getvalue()
+
+st.set_page_config(layout="wide")
+st_autorefresh(interval=600000, key="fizzbuzzcounter")
+
 colA, colB = st.columns([0.8,0.2])
 
 with colA:
@@ -150,10 +199,11 @@ pedidos = pd.read_sql(query_pedidos,engine)
 orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
 
 pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
+pedidos_real_time = pedidos.copy()
 pedidos["entrega"] = pd.to_datetime(pedidos["entrega"], format = 'mixed', errors='coerce')
 
 ordens = ordens[ordens['estacao'] != 'Selecione...']
-ordens.dropna(subset=['ordem', 'data_ini', 'hora_ini','data_fim','hora_fim'], inplace=True)
+ordens.dropna(subset=['ordem', 'data_ini', 'hora_ini'], inplace=True)
 
 ordens['hora_ini'] = ordens['hora_ini'].apply(format_timedelta)
 ordens['hora_fim'] = ordens['hora_fim'].apply(format_timedelta)
@@ -163,7 +213,7 @@ ordens['Datetime_fim'] = pd.to_datetime(ordens['data_fim'].astype(str) + ' ' + o
 
 ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], errors='coerce')
 ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], errors='coerce')
-
+ordens_real_time = ordens.copy()
 ordens = ordens[ordens['data_ini'].dt.year >= 2024]
 
 ordens['ordem'] = ordens['ordem'].astype(int)
@@ -199,7 +249,8 @@ substituicoes = {
                  'Acabamento': 'ACABAMENTO',
                  'DHCNC': 'DOBRADEIRA',
                  'DHCN': 'DOBRADEIRA',
-                 'DBEP': 'PRENSA (AMASSAMENTO)'}
+                 'DBEP': 'PRENSA (AMASSAMENTO)'
+                 }
 
 for key, value in substituicoes.items():
     ordens.loc[ordens['estacao'].str.contains(key, na=False), 'estacao'] = value
@@ -241,11 +292,13 @@ ordens.loc[ordens['estacao'].str.contains('SOLDAGEM'), 'estacao'] = ('SOLDA' + '
 ordens.loc[ordens['estacao'].str.contains('TORNO CONVENCIONAL'), 'estacao'] = ('TORNO CONV.' + ' - ' + ordens['nome_func'])
 ordens.loc[ordens['estacao'].str.contains('FRESADORAS'), 'estacao'] = ('FRESADORA' + ' - ' + ordens['nome_func'])
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
                                 "ANÁLISE HORA DE TRABALHO MENSAL",
                                 "ANÁLISE HORA DE TRABALHO POR PV",
                                 "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ",
-                                "ANÁLISE MENSAL DE PEDIDOS"])
+                                "ANÁLISE MENSAL DE PEDIDOS",
+                                "ACOMPANHAMENTO DA PRODUÇÃO EM TEMPO REAL"
+                                ])
 
 lista_estacoes = [
     'FRESADORA - VALDEMIR',
@@ -273,13 +326,14 @@ lista_estacoes = [
     'PRENSA (AMASSAMENTO)',
     'JATO',
     'MONTAGEM'
-]
+    ]
 lista_estacoes.sort()
+
 with tab1:
     with st.sidebar:
         date_now = dt.now()
         estacao = st.selectbox("Estação", lista_estacoes, placeholder='Escolha uma opção')
-        target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=date_now.month, placeholder='Escolha uma opção')
+        target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=(date_now.month-1), placeholder='Escolha uma opção')
         target_year = st.selectbox("Ano", ordens["Ano"].sort_values().unique(), key=2, index=0, placeholder='Escolha uma opção')
     
     new_df = ordens[ordens['estacao'] == estacao]
@@ -409,10 +463,24 @@ with tab2:
     orc_codprod = orc[orc['CODIGO'] == codprod]
 
     tempo_esperado = {
-        'CORTE-PLASMA': None, 'CORTE - SERRA': None, 'CORTE-LASER': None, 'CORTE-GUILHOTINA': None,
-        'TORNO CONVENCIONAL': None, 'TORNO CNC': None, 'FRESADORAS': None, 'CENTRO DE USINAGEM': None,
-        'PRENSA (AMASSAMENTO)': None, 'DOBRADEIRA': None, 'ROSQUEADEIRA': None, 'FURADEIRA DE BANCADA': None,
-        'SOLDAGEM': None, 'ACABAMENTO': None, 'JATEAMENTO': None, 'PINTURA': None, 'MONTAGEM': None, 'CALANDRA': None,
+        'CORTE-PLASMA': None, 
+        'CORTE - SERRA': None,
+        'CORTE-LASER': None,
+        'CORTE-GUILHOTINA': None,
+        'TORNO CONVENCIONAL': None,
+        'TORNO CNC': None,
+        'FRESADORAS': None,
+        'CENTRO DE USINAGEM': None,
+        'PRENSA (AMASSAMENTO)': None,
+        'DOBRADEIRA': None,
+        'ROSQUEADEIRA': None,
+        'FURADEIRA DE BANCADA': None,
+        'SOLDAGEM': None,
+        'ACABAMENTO': None,
+        'JATEAMENTO': None,
+        'PINTURA': None,
+        'MONTAGEM': None,
+        'CALANDRA': None,
         'TOTAL': None
     }
 
@@ -581,6 +649,32 @@ with tab4:
     col36,col37 = st.columns([0.5,0.5])
     col36.plotly_chart(fig3, use_container_width=True)
     col37.plotly_chart(fig4, use_container_width=True)
+
+with tab5:
+    now = dt.now()
+
+    ordens_real_time = ordens_real_time[ordens_real_time['status'] == 1]
+
+    ordens_real_time = ordens_real_time[(ordens_real_time['Datetime_ini'].dt.day == now.day) & (ordens_real_time['Datetime_ini'].dt.month == now.month)]
+    ordens_real_time = ordens_real_time.drop_duplicates(subset='estacao',keep='last')
+    ordens_real_time['status'] = ordens_real_time.apply(lambda row: 'running' if row['status'] == 1 else 'stopped', axis=1)
+
+    svg_path = 'Group 1.svg'
+    svg_data = update_svg(svg_path, ordens_real_time, pedidos_real_time)
+
+    html_content = f"""
+        <html>
+        <body>
+            <div id="svg-container">
+                <svg width="1500" height="600" xmlns="http://www.w3.org/2000/svg">
+                    {svg_data}
+                </svg>
+            </div>
+        </body>
+        </html>
+    """
+    st.title('Acompanhamento da Produção em Tempo Real')
+    st.components.v1.html(html_content, height=1000,scrolling=True)
 
 st.markdown("""
     <style>

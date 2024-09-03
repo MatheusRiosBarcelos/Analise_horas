@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Tooltips</title>
+    <style>
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: auto;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -80px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            white-space: pre-wrap; /* Para permitir a quebra de linha */
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="svg-container" class="tooltip">
+        <!-- O SVG será inserido aqui pelo Streamlit -->
+    </div>
+    <span class="tooltiptext"></span>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var container = document.getElementById('svg-container');
+            var tooltip = document.querySelector('.tooltiptext');
+            
+            // A função para atualizar o tooltip
+            function updateTooltip(element) {
+                var title = element.querySelector('title');
+                if (title) {
+                    tooltip.textContent = title.textContent;
+                    title.remove();
+                }
+            }
+
+            // Adiciona o evento de mouseover para todos os elementos SVG
+            container.addEventListener('mouseover', function(event) {
+                if (event.target.closest('svg')) {
+                    updateTooltip(event.target);
+                }
+            });
+
+            // Limpa o tooltip quando o mouse sai
+            container.addEventListener('mouseout', function() {
+                tooltip.textContent = '';
+            });
+        });
+    </script>
+</body>
+</html>
