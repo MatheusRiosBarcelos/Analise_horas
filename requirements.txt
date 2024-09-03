@@ -9,3 +9,4 @@ pytz
 streamlit
 sqlalchemy
 mysql-connector-python
+streamlit_autorefresh
