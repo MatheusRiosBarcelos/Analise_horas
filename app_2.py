@@ -173,124 +173,146 @@ def update_svg(svg_path, data, pedidos):
     
     return svg_data.getvalue()
 
+@st.cache_resource
+def get_db_connection():
+    username = 'usinag87_matheus'
+    password = '%40Elohim32'
+    host = 'usinagemelohim.com.br'
+    port = '3306'
+    database = 'usinag87_controleprod'
+    
+    connection_string = f'mysql+mysqlconnector://{username}:{password}@{host}:{port}/{database}'
+    engine = create_engine(connection_string)
+    
+    return engine
+
+def fetch_data(_engine):
+    query_ordens = "SELECT * FROM ordens"
+    query_pedidos = "SELECT * FROM pedidos"
+    
+    ordens = pd.read_sql(query_ordens, engine)
+    pedidos = pd.read_sql(query_pedidos, engine)
+    
+    return ordens, pedidos
+
+@st.cache_data
+def transform_ordens(ordens):
+    ordens = ordens[ordens['estacao'] != 'Selecione...']
+    ordens.dropna(subset=['ordem', 'data_ini', 'hora_ini'], inplace=True)
+    ordens['hora_ini'] = ordens['hora_ini'].apply(format_timedelta)
+    ordens['hora_fim'] = ordens['hora_fim'].apply(format_timedelta)
+
+    ordens['Datetime_ini'] = pd.to_datetime(ordens['data_ini'].astype(str) + ' ' + ordens['hora_ini'], errors='coerce')
+    ordens['Datetime_fim'] = pd.to_datetime(ordens['data_fim'].astype(str) + ' ' + ordens['hora_fim'], errors='coerce')
+
+    ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], errors='coerce')
+    ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], errors='coerce')
+
+    ordens_real_time = ordens.copy()
+    ordens = ordens[ordens['data_ini'].dt.year >= 2024]
+
+    ordens['ordem'] = ordens['ordem'].astype(int)
+
+    ordens['delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime_ini']).dt.total_seconds()
+    ordens['delta_time_hours'] = ordens['delta_time_seconds'] / 3600
+    ordens['delta_time_min'] = ordens['delta_time_seconds'] / 60
+
+    substituicoes = {
+                    'JPS': 'JATO',
+                    'FRZ': 'FRESADORAS',
+                    'TCNV': 'TORNO CONVENCIONAL',
+                    'MQS': 'SOLDAGEM',
+                    'PLM001': 'PLM 001',
+                    'PLM 01': 'PLM 001',
+                    'SFH': 'CORTE - SERRA',
+                    'SRC': 'CORTE - SERRA',
+                    'TCNC': 'TORNO CNC',
+                    'LASER': 'CORTE-LASER',
+                    'MCL': 'CORTE-LASER',
+                    'PLM': 'CORTE-PLASMA',
+                    'GLT': 'CORTE-GUILHOTINA',
+                    'DGQ': 'QUALIDADE',
+                    'FRZ 033': 'FRZ 003',
+                    'FRZ003': 'FRZ 003',
+                    'CNC 001': 'CENTRO DE USINAGEM',
+                    'CCNC 001': 'CENTRO DE USINAGEM',
+                    'CCNC001': 'CENTRO DE USINAGEM',
+                    'CCNC01': 'CENTRO DE USINAGEM',
+                    'Bancada': 'ACABAMENTO',
+                    'BANCADA': 'ACABAMENTO',
+                    'AJT': 'ACABAMENTO',
+                    'Acabamento': 'ACABAMENTO',
+                    'DHCNC': 'DOBRADEIRA',
+                    'DHCN': 'DOBRADEIRA',
+                    'DBEP': 'PRENSA (AMASSAMENTO)'
+                    }
+
+    for key, value in substituicoes.items():
+        ordens.loc[ordens['estacao'].str.contains(key, na=False), 'estacao'] = value
+
+    ordens["Ano"] = ordens["data_ini"].dt.year.astype('Int64')
+    ordens["Mes"] = ordens["data_ini"].dt.month.astype('Int64')
+
+    ordens['delta_dia'] = (ordens['data_fim'] - ordens['data_ini']).dt.days
+    ordens['hora_fim'] = pd.to_datetime(ordens['hora_fim'], format='%H:%M:%S', errors='coerce').dt.time
+    ordens['hora_ini'] = pd.to_datetime(ordens['hora_ini'], format='%H:%M:%S', errors='coerce').dt.time
+
+    midnight = ordens['Datetime_fim'].dt.normalize()
+    seven_am = midnight + pd.Timedelta(hours=7)
+    condition = (ordens['delta_dia'] == 1) & (ordens['Datetime_ini'] < midnight) & (ordens['Datetime_fim'] <= seven_am)
+    ordens.loc[condition, 'delta_dia'] = 0
+
+    ordens['weekends_count'] = ordens.apply(lambda row: count_weekend_days(row['data_ini'], row['data_fim']), axis=1)
+    ordens = ordens.apply(adjust_delta_time_hours, axis=1)
+    ordens = ordens.apply(adjust_delta_time, axis=1)
+    ordens = ordens[ordens['delta_time_hours'] >= 0]
+    ordens = ordens.sort_values("data_ini")
+
+    ordem = ordens.copy()
+
+    ordens.loc[ordens['nome_func'].str.contains('GUSTAVO'), 'nome_func'] = 'LUIS GUSTAVO'
+    ordens.loc[ordens['nome_func'].str.contains('PEDRO'), 'nome_func'] = 'PEDRO'
+    ordens.loc[ordens['nome_func'].str.contains('LUCAS'), 'nome_func'] = 'LUCAS ASSIS'
+    ordens.loc[ordens['nome_func'].str.contains('CLEYTON'), 'nome_func'] = 'CLEYTON'
+    ordens.loc[ordens['nome_func'].str.contains('FABRICIO'), 'nome_func'] = 'FABRICIO'
+    ordens.loc[ordens['nome_func'].str.contains('MARCOS'), 'nome_func'] = 'ANTONIO MARCOS'
+    ordens.loc[ordens['nome_func'].str.contains('BATISTA'), 'nome_func'] = 'JOÃO BATISTA'
+    ordens.loc[ordens['nome_func'].str.contains('GIOVANNI'), 'nome_func'] = 'GIOVANNI'
+    ordens.loc[ordens['nome_func'].str.contains('SIDNEY'), 'nome_func'] = 'SIDNEY'
+    ordens.loc[ordens['nome_func'].str.contains('PAULO'), 'nome_func'] = 'JOÃO PAULO'
+    ordens.loc[ordens['nome_func'].str.contains('VAL'), 'nome_func'] = 'VALDEMIR'
+    ordens.loc[ordens['estacao'].str.contains('TORNO CNC'), 'estacao'] = ('TORNO CNC' + ' - ' + ordens['nome_func'])
+    ordens.loc[ordens['estacao'].str.contains('SOLDAGEM'), 'estacao'] = ('SOLDA' + ' - ' + ordens['nome_func'])
+    ordens.loc[ordens['estacao'].str.contains('TORNO CONVENCIONAL'), 'estacao'] = ('TORNO CONV.' + ' - ' + ordens['nome_func'])
+    ordens.loc[ordens['estacao'].str.contains('FRESADORAS'), 'estacao'] = ('FRESADORA' + ' - ' + ordens['nome_func'])
+
+
+    return ordens, ordem, ordens_real_time
+
+@st.cache_data
+def transform_pedidos(pedidos):
+    pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
+    pedidos_real_time = pedidos.copy()
+    pedidos["entrega"] = pd.to_datetime(pedidos["entrega"], format = 'mixed', errors='coerce')
+
+    pedido = pedidos.copy()
+    
+    return pedidos, pedido, pedidos_real_time
+
 st.set_page_config(layout="wide")
-st_autorefresh(interval=600000, key="fizzbuzzcounter")
+
+engine = get_db_connection()
+ordens, pedidos = fetch_data(engine)
+
+ordens, ordem, ordens_real_time = transform_ordens(ordens)
+pedidos, pedido, pedidos_real_time = transform_pedidos(pedidos)
 
 colA, colB = st.columns([0.8,0.2])
 
 with colA:
     st.image('logo.png', width= 150)
 
-username = 'usinag87_matheus'
-password = '%40Elohim32'
-host = 'usinagemelohim.com.br'
-port = '3306'
-database = 'usinag87_controleprod'
-
-connection_string = f'mysql+mysqlconnector://{username}:{password}@{host}:{port}/{database}'
-
-engine = create_engine(connection_string)
-
-query_ordens = "SELECT * FROM ordens"
-query_pedidos = "SELECT * FROM pedidos"
-ordens = pd.read_sql(query_ordens, engine)
-pedidos = pd.read_sql(query_pedidos,engine)
-
 orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
-
-pedidos['codprod'] = pedidos['codprod'].apply(inserir_hifen)
-pedidos_real_time = pedidos.copy()
-pedidos["entrega"] = pd.to_datetime(pedidos["entrega"], format = 'mixed', errors='coerce')
-
-ordens = ordens[ordens['estacao'] != 'Selecione...']
-ordens.dropna(subset=['ordem', 'data_ini', 'hora_ini'], inplace=True)
-
-ordens['hora_ini'] = ordens['hora_ini'].apply(format_timedelta)
-ordens['hora_fim'] = ordens['hora_fim'].apply(format_timedelta)
-
-ordens['Datetime_ini'] = pd.to_datetime(ordens['data_ini'].astype(str) + ' ' + ordens['hora_ini'], errors='coerce')
-ordens['Datetime_fim'] = pd.to_datetime(ordens['data_fim'].astype(str) + ' ' + ordens['hora_fim'], errors='coerce')
-
-ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], errors='coerce')
-ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], errors='coerce')
-ordens_real_time = ordens.copy()
-ordens = ordens[ordens['data_ini'].dt.year >= 2024]
-
-ordens['ordem'] = ordens['ordem'].astype(int)
-
-ordens['delta_time_seconds'] = (ordens['Datetime_fim'] - ordens['Datetime_ini']).dt.total_seconds()
-ordens['delta_time_hours'] = ordens['delta_time_seconds'] / 3600
-ordens['delta_time_min'] = ordens['delta_time_seconds'] / 60
-
-substituicoes = {
-                 'JPS': 'JATO',
-                 'FRZ': 'FRESADORAS',
-                 'TCNV': 'TORNO CONVENCIONAL',
-                 'MQS': 'SOLDAGEM',
-                 'PLM001': 'PLM 001',
-                 'PLM 01': 'PLM 001',
-                 'SFH': 'CORTE - SERRA',
-                 'SRC': 'CORTE - SERRA',
-                 'TCNC': 'TORNO CNC',
-                 'LASER': 'CORTE-LASER',
-                 'MCL': 'CORTE-LASER',
-                 'PLM': 'CORTE-PLASMA',
-                 'GLT': 'CORTE-GUILHOTINA',
-                 'DGQ': 'QUALIDADE',
-                 'FRZ 033': 'FRZ 003',
-                 'FRZ003': 'FRZ 003',
-                 'CNC 001': 'CENTRO DE USINAGEM',
-                 'CCNC 001': 'CENTRO DE USINAGEM',
-                 'CCNC001': 'CENTRO DE USINAGEM',
-                 'CCNC01': 'CENTRO DE USINAGEM',
-                 'Bancada': 'ACABAMENTO',
-                 'BANCADA': 'ACABAMENTO',
-                 'AJT': 'ACABAMENTO',
-                 'Acabamento': 'ACABAMENTO',
-                 'DHCNC': 'DOBRADEIRA',
-                 'DHCN': 'DOBRADEIRA',
-                 'DBEP': 'PRENSA (AMASSAMENTO)'
-                 }
-
-for key, value in substituicoes.items():
-    ordens.loc[ordens['estacao'].str.contains(key, na=False), 'estacao'] = value
-
-ordens["Ano"] = ordens["data_ini"].dt.year.astype('Int64')
-ordens["Mes"] = ordens["data_ini"].dt.month.astype('Int64')
-
-ordens['delta_dia'] = (ordens['data_fim'] - ordens['data_ini']).dt.days
-ordens['hora_fim'] = pd.to_datetime(ordens['hora_fim'], format='%H:%M:%S', errors='coerce').dt.time
-ordens['hora_ini'] = pd.to_datetime(ordens['hora_ini'], format='%H:%M:%S', errors='coerce').dt.time
-
-midnight = ordens['Datetime_fim'].dt.normalize()
-seven_am = midnight + pd.Timedelta(hours=7)
-condition = (ordens['delta_dia'] == 1) & (ordens['Datetime_ini'] < midnight) & (ordens['Datetime_fim'] <= seven_am)
-ordens.loc[condition, 'delta_dia'] = 0
-
-ordens['weekends_count'] = ordens.apply(lambda row: count_weekend_days(row['data_ini'], row['data_fim']), axis=1)
-ordens = ordens.apply(adjust_delta_time_hours, axis=1)
-ordens = ordens.apply(adjust_delta_time, axis=1)
-ordens = ordens[ordens['delta_time_hours'] >= 0]
-ordens = ordens.sort_values("data_ini")
-
-ordem = ordens.copy()
-pedido = pedidos.copy()
-
-ordens.loc[ordens['nome_func'].str.contains('GUSTAVO'), 'nome_func'] = 'LUIS GUSTAVO'
-ordens.loc[ordens['nome_func'].str.contains('PEDRO'), 'nome_func'] = 'PEDRO'
-ordens.loc[ordens['nome_func'].str.contains('LUCAS'), 'nome_func'] = 'LUCAS ASSIS'
-ordens.loc[ordens['nome_func'].str.contains('CLEYTON'), 'nome_func'] = 'CLEYTON'
-ordens.loc[ordens['nome_func'].str.contains('FABRICIO'), 'nome_func'] = 'FABRICIO'
-ordens.loc[ordens['nome_func'].str.contains('MARCOS'), 'nome_func'] = 'ANTONIO MARCOS'
-ordens.loc[ordens['nome_func'].str.contains('BATISTA'), 'nome_func'] = 'JOÃO BATISTA'
-ordens.loc[ordens['nome_func'].str.contains('GIOVANNI'), 'nome_func'] = 'GIOVANNI'
-ordens.loc[ordens['nome_func'].str.contains('SIDNEY'), 'nome_func'] = 'SIDNEY'
-ordens.loc[ordens['nome_func'].str.contains('PAULO'), 'nome_func'] = 'JOÃO PAULO'
-ordens.loc[ordens['nome_func'].str.contains('VAL'), 'nome_func'] = 'VALDEMIR'
-ordens.loc[ordens['estacao'].str.contains('TORNO CNC'), 'estacao'] = ('TORNO CNC' + ' - ' + ordens['nome_func'])
-ordens.loc[ordens['estacao'].str.contains('SOLDAGEM'), 'estacao'] = ('SOLDA' + ' - ' + ordens['nome_func'])
-ordens.loc[ordens['estacao'].str.contains('TORNO CONVENCIONAL'), 'estacao'] = ('TORNO CONV.' + ' - ' + ordens['nome_func'])
-ordens.loc[ordens['estacao'].str.contains('FRESADORAS'), 'estacao'] = ('FRESADORA' + ' - ' + ordens['nome_func'])
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
                                 "ANÁLISE HORA DE TRABALHO MENSAL",
