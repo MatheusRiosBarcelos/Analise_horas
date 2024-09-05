@@ -160,7 +160,7 @@ def update_svg(svg_path, data, pedidos):
                     element.remove(title)
 
                 title_element = ET.SubElement(element, 'title')
-                title_element.text = f"Estação: {machine.estacao}\nFuncionário: {machine.nome_func}\nPV: {pedido.pedido.iloc[0]}\nOrdem: {machine.ordem}\nPeça: {pedido.descricao.iloc[0]}\nInício: {machine.hora_ini}\nData Entrega: {pedido.entrega.iloc[0]}"
+                title_element.text = f"Estação: {machine.estacao}\nFuncionário: {machine.nome_func}\nPV: {pedido.pedido.iloc[0]}\nOrdem: {machine.ordem}\nPeça: {pedido.descricao.iloc[0]}\nInício: {machine.hora_ini}\nData Entrega: {pedido.entrega.iloc[0]}\nN° de Peças:{pedido.quant_a_fat.iloc[0]}"
             else:
                 # st.write(f"Elemento com ID '{machine.estacao}' não encontrado no SVG")
                 continue
