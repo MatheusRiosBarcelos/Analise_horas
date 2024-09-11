@@ -10,6 +10,8 @@ from sqlalchemy import create_engine
 import xml.etree.ElementTree as ET
 from io import StringIO
 from streamlit_autorefresh import st_autorefresh
+from pandas.tseries.offsets import DateOffset
+
 
 def convert_to_HM(x):
     hours = float(x)
@@ -378,7 +380,12 @@ with tab1:
     pedidos['codprod'] = pedidos['codprod'].astype(str)
     orc['CODIGO'] = orc['CODIGO'].astype(str)
 
-    pedidos_orc = pedidos[(pedidos['entrega'].dt.month == target_month) & (pedidos['entrega'].dt.year == target_year)]
+    inicio_periodo = pd.to_datetime(f'{target_year}-{target_month}-05')
+    fim_periodo = inicio_periodo + DateOffset(months=1)
+
+    pedidos_orc = pedidos[(pedidos['entrega'] >= inicio_periodo) & (pedidos['entrega'] < fim_periodo)]
+
+    # pedidos_orc = pedidos[(pedidos['entrega'].dt.month == target_month) & (pedidos['entrega'].dt.year == target_year)]
     pedidos_orc = pedidos_orc.merge(orc, left_on='codprod', right_on='CODIGO', how='left').dropna(subset=['CODIGO'])
     pedidos_orc['TOTAL'] = pedidos_orc['TOTAL'] * pedidos_orc['quant_a_fat']
     total_de_horas_orcadas = (pedidos_orc['TOTAL'].sum() / 60).round(0)
