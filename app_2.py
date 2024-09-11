@@ -302,7 +302,7 @@ def transform_pedidos(pedidos):
     return pedidos, pedido, pedidos_real_time
 
 st.set_page_config(layout="wide")
-st_autorefresh(interval=600000, key="fizzbuzzcounter")
+st_autorefresh(interval=300000, key="fizzbuzzcounter")
 
 engine = get_db_connection()
 ordens, pedidos = fetch_data(engine)
