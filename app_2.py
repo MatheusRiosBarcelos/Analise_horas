@@ -59,7 +59,7 @@ def adjust_delta_time_hours(row):
         row['delta_time_hours'] = row['delta_time_hours'] - ((row['delta_dia']) * 14)
     elif ((row['delta_dia'] != 0) and (row['weekends_count'] >= 2)):
         row['delta_time_hours'] = row['delta_time_hours'] - ((row['delta_dia']-row['weekends_count']) * 14) - (row['weekends_count'] * 24)
-    elif ((row['delta_dia'] == 0) and (row['weekends_count'] == 0)):
+    elif ((row['delta_dia'] != 0) and (row['weekends_count'] == 0)):
         row['delta_time_hours'] = row['delta_time_hours'] - ((row['delta_dia']) * 14)
     return row
 
