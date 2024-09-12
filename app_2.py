@@ -35,7 +35,7 @@ def adjust_delta_time(row):
         if (row['delta_dia'] == 0 and row['hora_fim'] > pd.to_datetime('12:30:00').time() and row['hora_ini'] < pd.to_datetime('11:30:00').time()):
             row['delta_time_hours'] -= 1
         
-        if ((row['delta_dia'] != 1) and (pd.notna(row['data_ini'])) and (pd.notna(row['data_fim']))):
+        if ((row['delta_dia'] != 0) and (pd.notna(row['data_ini'])) and (pd.notna(row['data_fim']))):
             intervalo_ini = pd.to_datetime('11:30:00').time()
             intervalo_fim = pd.to_datetime('12:30:00').time()
             count_interval = 0
