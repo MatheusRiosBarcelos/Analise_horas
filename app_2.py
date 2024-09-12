@@ -31,14 +31,36 @@ def count_weekend_days(start_date, end_date):
     return len(weekends)
 
 def adjust_delta_time(row):
-    if pd.notna(row['hora_ini']) and pd.notna(row['hora_fim']):
+    if ((pd.notna(row['hora_ini'])) and (pd.notna(row['hora_fim']))):
         if (row['delta_dia'] == 0 and row['hora_fim'] > pd.to_datetime('12:30:00').time() and row['hora_ini'] < pd.to_datetime('11:30:00').time()):
-            row['delta_time_hours']  = row['delta_time_hours'] - 1
+            row['delta_time_hours'] -= 1
+        
+        if ((row['delta_dia'] != 1) and (pd.notna(row['data_ini'])) and (pd.notna(row['data_fim']))):
+            intervalo_ini = pd.to_datetime('11:30:00').time()
+            intervalo_fim = pd.to_datetime('12:30:00').time()
+            count_interval = 0
+            
+            for dia in pd.date_range(row['data_ini'], row['data_fim'], freq='D'):
+                if dia == row['data_ini']:
+                    if row['hora_ini'] < intervalo_fim:
+                        count_interval += 1
+                elif dia == row['data_fim']:
+                    if row['hora_fim'] > intervalo_ini:
+                        count_interval += 1
+                else:
+                    count_interval += 1
+            
+            row['delta_time_hours'] -= count_interval
+
     return row
 
 def adjust_delta_time_hours(row):
-    if row['delta_dia'] != 0:
+    if ((row['delta_dia'] != 0) and (row['weekends_count'] == 1)):
+        row['delta_time_hours'] = row['delta_time_hours'] - ((row['delta_dia']) * 14)
+    elif ((row['delta_dia'] != 0) and (row['weekends_count'] >= 2)):
         row['delta_time_hours'] = row['delta_time_hours'] - ((row['delta_dia']-row['weekends_count']) * 14) - (row['weekends_count'] * 24)
+    elif ((row['delta_dia'] == 0) and (row['weekends_count'] == 0)):
+        row['delta_time_hours'] = row['delta_time_hours'] - ((row['delta_dia']) * 14)
     return row
 
 def get_quantity(cliente_name):
@@ -385,7 +407,6 @@ with tab1:
 
     pedidos_orc = pedidos[(pedidos['entrega'] >= inicio_periodo) & (pedidos['entrega'] < fim_periodo)]
 
-    # pedidos_orc = pedidos[(pedidos['entrega'].dt.month == target_month) & (pedidos['entrega'].dt.year == target_year)]
     pedidos_orc = pedidos_orc.merge(orc, left_on='codprod', right_on='CODIGO', how='left').dropna(subset=['CODIGO'])
     pedidos_orc['TOTAL'] = pedidos_orc['TOTAL'] * pedidos_orc['quant_a_fat']
     total_de_horas_orcadas = (pedidos_orc['TOTAL'].sum() / 60).round(0)
