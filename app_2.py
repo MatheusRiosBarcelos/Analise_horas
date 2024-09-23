@@ -12,7 +12,6 @@ from io import StringIO
 from streamlit_autorefresh import st_autorefresh
 from pandas.tseries.offsets import DateOffset
 
-
 def convert_to_HM(x):
     hours = float(x)
     h = int(hours)
@@ -116,7 +115,6 @@ def inserir_hifen(valor):
         return f"{novo_prefixo}-{sufixo}"
     return valor
 
-def get_last_commit_date(repo_owner, repo_name):
     url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/commits"
     response = requests.get(url)
     
@@ -184,7 +182,7 @@ def update_svg(svg_path, data, pedidos):
                     element.remove(title)
 
                 title_element = ET.SubElement(element, 'title')
-                title_element.text = f"Estação: {machine.estacao}\nFuncionário: {machine.nome_func}\nPV: {pedido.pedido.iloc[0]}\nOrdem: {machine.ordem}\nPeça: {pedido.descricao.iloc[0]}\nInício: {machine.hora_ini}\nData Entrega: {pedido.entrega.iloc[0]}\nN° de Peças:{pedido.quant_a_fat.iloc[0]}"
+                title_element.text = f"Estação: {machine.estacao}\nFuncionário: {machine.nome_func}\nPV: {pedido.pedido.iloc[0]}\nOrdem: {machine.ordem}\nPeça: {pedido.descricao.iloc[0]}\nInício: {machine.hora_ini}\nData Entrega: {pedido.entrega.iloc[0]}\nN° de Peças: {pedido.quant_a_fat.iloc[0]}"
             else:
                 # st.write(f"Elemento com ID '{machine.estacao}' não encontrado no SVG")
                 continue
@@ -323,6 +321,12 @@ def transform_pedidos(pedidos):
     
     return pedidos, pedido, pedidos_real_time
 
+@st.cache_data
+def get_orc():
+    orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+    return orc
+
+
 st.set_page_config(layout="wide")
 st_autorefresh(interval=300000, key="fizzbuzzcounter")
 
@@ -334,10 +338,11 @@ pedidos, pedido, pedidos_real_time = transform_pedidos(pedidos)
 
 colA, colB = st.columns([0.8,0.2])
 
-with colA:
-    st.image('logo.png', width= 150)
+st.image('logo.png', width= 150)
 
-orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+# orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
+
+orc = get_orc()
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
                                 "ANÁLISE HORA DE TRABALHO MENSAL",
@@ -725,7 +730,7 @@ with tab5:
         </html>
     """
     st.title('Acompanhamento da Produção em Tempo Real')
-    st.components.v1.html(html_content, height=1000,scrolling=True)
+    st.components.v1.html(html_content, height=700,scrolling=True)
 
 st.markdown("""
     <style>
