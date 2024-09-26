@@ -182,7 +182,7 @@ def update_svg(svg_path, data, pedidos):
                     element.remove(title)
 
                 title_element = ET.SubElement(element, 'title')
-                title_element.text = f"Estação: {machine.estacao}\nFuncionário: {machine.nome_func}\nPV: {pedido.pedido.iloc[0]}\nOrdem: {machine.ordem}\nPeça: {pedido.descricao.iloc[0]}\nInício: {machine.hora_ini}\nData Entrega: {pedido.entrega.iloc[0]}\nN° de Peças: {pedido.quant_a_fat.iloc[0]}"
+                title_element.text = f"Estação: {machine.estacao}\nFuncionário: {machine.nome_func}\nPV: {pedido.pedido.iloc[0]}\nOrdem: {machine.ordem}\nCliente: {pedido.cliente.iloc[0]}\nPeça: {pedido.descricao.iloc[0]}\nInício: {machine.hora_ini}\nData Entrega: {pedido.entrega.iloc[0]}\nN° de Peças: {pedido.quant_a_fat.iloc[0]}"
             else:
                 # st.write(f"Elemento com ID '{machine.estacao}' não encontrado no SVG")
                 continue
@@ -326,7 +326,6 @@ def get_orc():
     orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
     return orc
 
-
 st.set_page_config(layout="wide")
 st_autorefresh(interval=300000, key="fizzbuzzcounter")
 
@@ -339,8 +338,6 @@ pedidos, pedido, pedidos_real_time = transform_pedidos(pedidos)
 colA, colB = st.columns([0.8,0.2])
 
 st.image('logo.png', width= 150)
-
-# orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
 
 orc = get_orc()
 
