@@ -173,16 +173,34 @@ def update_svg(svg_path, data, pedidos):
             
             element = root.find(f".//ns:*[@id='{machine.estacao}']", namespace)
             
-            pedido = pedidos[pedidos.ordem == machine.ordem]
-            
             if element is not None:
                 element.set('style', f'fill: {color_map[status]};')
                 
                 for title in element.findall('ns:title', namespace):
                     element.remove(title)
+                
+                apontamentos = data[data.estacao == machine.estacao]
 
                 title_element = ET.SubElement(element, 'title')
-                title_element.text = f"Estação: {machine.estacao}\nFuncionário: {machine.nome_func}\nPV: {pedido.pedido.iloc[0]}\nOrdem: {machine.ordem}\nCliente: {pedido.cliente.iloc[0]}\nPeça: {pedido.descricao.iloc[0]}\nInício: {machine.hora_ini}\nData Entrega: {pedido.entrega.iloc[0]}\nN° de Peças: {pedido.quant_a_fat.iloc[0]}"
+                
+                tooltip_text = f"Estação: {machine.estacao}"
+                for apontamento in apontamentos.itertuples():
+                    pedido = pedidos[pedidos.ordem == apontamento.ordem]
+                    if not pedido.empty:
+                        tooltip_text += (
+                            f"\nFuncionário: {apontamento.nome_func}"
+                            f"\nPV: {pedido.pedido.iloc[0]}"
+                            f"\nOrdem: {apontamento.ordem}"
+                            f"\nCliente: {pedido.cliente.iloc[0]}"
+                            f"\nPeça: {pedido.descricao.iloc[0]}"
+                            f"\nInício: {apontamento.hora_ini}"
+                            f"\nData Entrega: {pedido.entrega.iloc[0]}"
+                            f"\nN° de Peças: {pedido.quant_a_fat.iloc[0]}\n"
+                        )
+                    else:
+                        st.write(f"Pedido não encontrado para a ordem {apontamento.ordem}")
+
+                title_element.text = tooltip_text.strip()
             else:
                 # st.write(f"Elemento com ID '{machine.estacao}' não encontrado no SVG")
                 continue
@@ -292,7 +310,7 @@ def transform_ordens(ordens):
 
     ordem = ordens.copy()
 
-    ordens.loc[ordens['nome_func'].str.contains('GUSTAVO'), 'nome_func'] = 'LUIS GUSTAVO'
+    ordens.loc[ordens['nome_func'].str.contains('GUSTAVO'), 'nome_func'] = 'LUIZ GUSTAVO'
     ordens.loc[ordens['nome_func'].str.contains('PEDRO'), 'nome_func'] = 'PEDRO'
     ordens.loc[ordens['nome_func'].str.contains('LUCAS'), 'nome_func'] = 'LUCAS ASSIS'
     ordens.loc[ordens['nome_func'].str.contains('CLEYTON'), 'nome_func'] = 'CLEYTON'
@@ -360,7 +378,7 @@ lista_estacoes = [
     'TORNO CONV. - PEDRO',
     'TORNO CONV. - ANTONIO MARCOS',
     'SOLDA - CLEYTON',
-    'SOLDA - LUIS GUSTAVO',
+    'SOLDA - LUIZ GUSTAVO',
     'SOLDA - LUCAS ASSIS',
     'SOLDA - FABRICIO',
     'SOLDA - PABLO',
@@ -423,7 +441,7 @@ with tab1:
             if not pd.isna(row[coluna]):
                 pedidos_orc.loc[index, coluna] = round((row[coluna]*row['quant_a_fat'])/60,0)
     
-    mapa_maquinas = {'FRESADORA - VALDEMIR': 'FRESADORAS','FRESADORAS - GIOVANNI':'FRESADORAS','FRESADORA - JOÃO PAULO':'FRESADORAS','FRESADORA - SIDNEY':'FRESADORAS','TORNO CONV. - SIDNEY': 'TORNO CONVENCIONAL','TORNO CONV. - GIOVANNI': 'TORNO CONVENCIONAL','TORNO CONV. - JOAO BATISTA': 'TORNO CONVENCIONAL','TORNO CONV. - PEDRO': 'TORNO CONVENCIONAL','TORNO CONV. - ANTONIO MARCOS': 'TORNO CONVENCIONAL','SOLDA - CLEYTON':'SOLDAGEM','SOLDA - LUIS GUSTAVO':'SOLDAGEM','SOLDA - LUCAS ASSIS':'SOLDAGEM','SOLDA - FABRICIO':'SOLDAGEM','SOLDA - PABLO':'SOLDAGEM','CORTE - SERRA': 'CORTE - SERRA','CORTE-PLASMA': 'CORTE-PLASMA','CORTE-LASER': 'CORTE-LASER','CORTE-GUILHOTINA': 'CORTE-GUILHOTINA','TORNO CNC': 'TORNO CNC','CENTRO DE USINAGEM': 'CENTRO DE USINAGEM','ACABAMENTO': 'ACABAMENTO','DOBRA': 'DOBRADEIRA','PRENSA (AMASSAMENTO)' : 'PRENSA (AMASSAMENTO)','JATO' : 'JATEAMENTO','MONTAGEM':'MONTAGEM'}
+    mapa_maquinas = {'FRESADORA - VALDEMIR': 'FRESADORAS','FRESADORAS - GIOVANNI':'FRESADORAS','FRESADORA - JOÃO PAULO':'FRESADORAS','FRESADORA - SIDNEY':'FRESADORAS','TORNO CONV. - SIDNEY': 'TORNO CONVENCIONAL','TORNO CONV. - GIOVANNI': 'TORNO CONVENCIONAL','TORNO CONV. - JOAO BATISTA': 'TORNO CONVENCIONAL','TORNO CONV. - PEDRO': 'TORNO CONVENCIONAL','TORNO CONV. - ANTONIO MARCOS': 'TORNO CONVENCIONAL','SOLDA - CLEYTON':'SOLDAGEM','SOLDA - LUIZ GUSTAVO':'SOLDAGEM','SOLDA - LUCAS ASSIS':'SOLDAGEM','SOLDA - FABRICIO':'SOLDAGEM','SOLDA - PABLO':'SOLDAGEM','CORTE - SERRA': 'CORTE - SERRA','CORTE-PLASMA': 'CORTE-PLASMA','CORTE-LASER': 'CORTE-LASER','CORTE-GUILHOTINA': 'CORTE-GUILHOTINA','TORNO CNC': 'TORNO CNC','CENTRO DE USINAGEM': 'CENTRO DE USINAGEM','ACABAMENTO': 'ACABAMENTO','DOBRA': 'DOBRADEIRA','PRENSA (AMASSAMENTO)' : 'PRENSA (AMASSAMENTO)','JATO' : 'JATEAMENTO','MONTAGEM':'MONTAGEM'}
     maquina = next((valor for chave, valor in mapa_maquinas.items() if chave in estacao), 'DESCONHECIDA')
     total_de_horas_orcadas_maquina = pedidos_orc[maquina].sum()
 
@@ -709,7 +727,7 @@ with tab5:
     ordens_real_time = ordens_real_time[ordens_real_time['status'] == 1]
 
     ordens_real_time = ordens_real_time[(ordens_real_time['Datetime_ini'].dt.day == now.day) & (ordens_real_time['Datetime_ini'].dt.month == now.month)]
-    ordens_real_time = ordens_real_time.drop_duplicates(subset='estacao',keep='last')
+    # ordens_real_time = ordens_real_time.drop_duplicates(subset='estacao',keep='last')
     ordens_real_time['status'] = ordens_real_time.apply(lambda row: 'running' if row['status'] == 1 else 'stopped', axis=1)
 
     svg_path = 'Group 1.svg'
