@@ -162,7 +162,7 @@ def update_svg(svg_path, data, pedidos):
 
     namespace = {'ns': 'http://www.w3.org/2000/svg'}
     
-    color_map = {'running': '#3ACC55', 'stopped': '#FC1010'}
+    color_map = {'running': '#3ACC55', 'setup':'#ECEC51','stopped': '#FC1010'}
     
     for machine in data.itertuples():
         try:
@@ -284,7 +284,7 @@ def transform_ordens(ordens):
                     'Acabamento': 'ACABAMENTO',
                     'DHCNC': 'DOBRADEIRA',
                     'DHCN': 'DOBRADEIRA',
-                    'DBEP': 'PRENSA (AMASSAMENTO)'
+                    'DBEP': 'PRENSA (AMASSAMENTO)',
                     }
 
     for key, value in substituicoes.items():
@@ -432,8 +432,10 @@ with tab1:
     total_de_horas_orcadas = (pedidos_orc['TOTAL'].sum() / 60).round(0)
 
     ordens_orc = ordens[(ordens['data_ini'].dt.month == target_month) & (ordens['data_ini'].dt.year == target_year)]
-    total_de_horas_trabalhadas = ordens_orc['delta_time_hours'].sum().round(0)
 
+    ordens_orc = ordens_orc.drop(ordens_orc[ordens_orc['estacao'] == 'SETUP'].index)
+
+    total_de_horas_trabalhadas = ordens_orc['delta_time_hours'].sum().round(0)
     colunas = ['ACABAMENTO', 'CORTE - SERRA', 'CORTE-PLASMA', 'CORTE-LASER', 'CENTRO DE USINAGEM','DOBRADEIRA','PRENSA (AMASSAMENTO)', 'FRESADORAS','TORNO CONVENCIONAL', 'TORNO CNC','MONTAGEM','SOLDAGEM']
 
     for index, row in pedidos_orc.iterrows():
@@ -519,6 +521,14 @@ with tab2:
     ordem_ped = ordem_ped[ordem_ped['ordem'].isin(filtro_df)]
     codprod = pedido['codprod'].iloc[0]
     ordem_ped= ordem_ped.dropna(subset=['estacao', 'delta_time_hours'])
+    
+    ordem_ped.loc[((ordem_ped['estacao'] == 'SET 001') & (ordem_ped['nome_func'] == 'JOÃO GUILHERME RIBEIRO DE CARVALHO'), 'estacao')] = 'SETUP - Plasma'
+    ordem_ped.loc[((ordem_ped['estacao'] == 'SET 001') & (ordem_ped['nome_func'] == 'JOAO BATISTA SOARES'), 'estacao')] = 'SETUP - TORNO CNC'
+    ordem_ped.loc[(ordem_ped['estacao'] == 'SET 001') & (ordem_ped['nome_func'] == 'ADAM JOVANE PIAZZA'),'estacao'] = 'SETUP - CNC'
+    ordem_ped.loc[(ordem_ped['estacao'] == 'SET 001') & (ordem_ped['nome_func'] == 'SIDNEY GERALDO MARINHO'),'estacao'] = 'SETUP - FRESA'
+    ordem_ped.loc[(ordem_ped['estacao'] == 'SET 001') & (ordem_ped['nome_func'] == 'PEDRO LUCAS RODRIGUES SERAFIM'),'estacao'] = 'SETUP - TORNO CONV.'
+
+
 
     soma_por_estacao = ordem_ped.groupby('estacao')['delta_time_hours'].sum().reset_index().round(2)
     soma_por_estacao.rename(columns={'delta_time_hours': 'Tempo de uso total (H:M)', 'estacao': 'Estação de Trabalho'}, inplace=True)
@@ -552,7 +562,7 @@ with tab2:
         'PINTURA': None,
         'MONTAGEM': None,
         'CALANDRA': None,
-        'TOTAL': None
+        'TOTAL': None,
     }
 
     if not orc_codprod.empty:
@@ -562,6 +572,19 @@ with tab2:
                     tempo_esperado[key] = convert_to_HM((row[key] / 60) * quant)
 
     estacoes_todas = pd.DataFrame(list(tempo_esperado.keys()), columns=['Estação de Trabalho'])
+
+    index_total = estacoes_todas[estacoes_todas['Estação de Trabalho'] == 'TOTAL'].index[0]
+
+    new_row = pd.DataFrame({'Estação de Trabalho': ['SETUP - Plasma', 'SETUP - FRESA', 'SETUP - TORNO CNC', 'SETUP - FRESA', 'SETUP - CNC', 'SETUP - TORNO CONV.']})
+
+    df_above_total = estacoes_todas.iloc[:index_total]
+    df_below_total = estacoes_todas.iloc[index_total:]
+
+    estacoes_todas = pd.concat([df_above_total, new_row, df_below_total], ignore_index=True)
+
+    estacoes_todas = estacoes_todas.reset_index(drop=True)
+
+    print(estacoes_todas)
 
     soma_por_estacao = estacoes_todas.merge(soma_por_estacao, on='Estação de Trabalho', how='left')
     soma_por_estacao['Tempo de uso total (H:M)'].fillna(0, inplace=True)
@@ -728,7 +751,18 @@ with tab5:
 
     ordens_real_time = ordens_real_time[(ordens_real_time['Datetime_ini'].dt.day == now.day) & (ordens_real_time['Datetime_ini'].dt.month == now.month)]
     # ordens_real_time = ordens_real_time.drop_duplicates(subset='estacao',keep='last')
-    ordens_real_time['status'] = ordens_real_time.apply(lambda row: 'running' if row['status'] == 1 else 'stopped', axis=1)
+
+    # ordens_real_time['status'] = ordens_real_time.apply(lambda row: 'running' if row['status'] == 1 else 'stopped', axis=1)
+
+    ordens_real_time.loc[ordens_real_time['estacao'] == 'SET 001', 'status'] = 'setup'
+
+    ordens_real_time.loc[ordens_real_time['status'] == 1, 'status'] = 'running'
+
+    ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'] == 'JOAO BATISTA SOARES'),'estacao'] = 'TCNC 001'
+    ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'] == 'JOÃO GUILHERME RIBEIRO DE CARVALHO'),'estacao'] = 'PLM 001'
+    ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'] == 'ADAM JOVANE PIAZZA'),'estacao'] = 'CNC 001'
+    ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'] == 'SIDNEY GERALDO MARINHO'),'estacao'] = 'FRZ 001'
+    ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'] == 'PEDRO LUCAS RODRIGUES SERAFIM'),'estacao'] = 'TCNV 001'
 
     svg_path = 'Group 1.svg'
     svg_data = update_svg(svg_path, ordens_real_time, pedidos_real_time)
