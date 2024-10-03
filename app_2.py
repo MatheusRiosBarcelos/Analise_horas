@@ -283,6 +283,7 @@ def transform_ordens(ordens):
                     'AJT': 'ACABAMENTO',
                     'Acabamento': 'ACABAMENTO',
                     'DHCNC': 'DOBRADEIRA',
+                    'DBE 001': 'DOBRADEIRA',
                     'DHCN': 'DOBRADEIRA',
                     'DBEP': 'PRENSA (AMASSAMENTO)',
                     }
@@ -389,7 +390,7 @@ lista_estacoes = [
     'TORNO CNC - JOÃO BATISTA',
     'CENTRO DE USINAGEM',
     'ACABAMENTO',
-    'DOBRA',
+    'DOBRADEIRA',
     'PRENSA (AMASSAMENTO)',
     'JATO',
     'MONTAGEM'
@@ -522,13 +523,14 @@ with tab2:
     codprod = pedido['codprod'].iloc[0]
     ordem_ped= ordem_ped.dropna(subset=['estacao', 'delta_time_hours'])
     
-    ordem_ped.loc[((ordem_ped['estacao'] == 'SET 001') & (ordem_ped['nome_func'] == 'JOÃO GUILHERME RIBEIRO DE CARVALHO'), 'estacao')] = 'SETUP - Plasma'
-    ordem_ped.loc[((ordem_ped['estacao'] == 'SET 001') & (ordem_ped['nome_func'] == 'JOAO BATISTA SOARES'), 'estacao')] = 'SETUP - TORNO CNC'
-    ordem_ped.loc[(ordem_ped['estacao'] == 'SET 001') & (ordem_ped['nome_func'] == 'ADAM JOVANE PIAZZA'),'estacao'] = 'SETUP - CNC'
-    ordem_ped.loc[(ordem_ped['estacao'] == 'SET 001') & (ordem_ped['nome_func'] == 'SIDNEY GERALDO MARINHO'),'estacao'] = 'SETUP - FRESA'
-    ordem_ped.loc[(ordem_ped['estacao'] == 'SET 001') & (ordem_ped['nome_func'] == 'PEDRO LUCAS RODRIGUES SERAFIM'),'estacao'] = 'SETUP - TORNO CONV.'
-
-
+    funcionario_setup_map = {
+        'JOÃO GUILHERME RIBEIRO DE CARVALHO': 'SETUP - Plasma',
+        'JOAO BATISTA SOARES': 'SETUP - TORNO CNC',
+        'ADAM JOVANE PIAZZA': 'SETUP - CNC',
+        'SIDNEY GERALDO MARINHO': 'SETUP - FRESA',
+        'PEDRO LUCAS RODRIGUES SERAFIM': 'SETUP - TORNO CONV.'
+    }
+    ordem_ped.loc[(ordem_ped['estacao'] == 'SET 001') & (ordem_ped['nome_func'].isin(funcionario_setup_map.keys())),'estacao'] = ordem_ped['nome_func'].map(funcionario_setup_map)
 
     soma_por_estacao = ordem_ped.groupby('estacao')['delta_time_hours'].sum().reset_index().round(2)
     soma_por_estacao.rename(columns={'delta_time_hours': 'Tempo de uso total (H:M)', 'estacao': 'Estação de Trabalho'}, inplace=True)
@@ -575,7 +577,7 @@ with tab2:
 
     index_total = estacoes_todas[estacoes_todas['Estação de Trabalho'] == 'TOTAL'].index[0]
 
-    new_row = pd.DataFrame({'Estação de Trabalho': ['SETUP - Plasma', 'SETUP - FRESA', 'SETUP - TORNO CNC', 'SETUP - FRESA', 'SETUP - CNC', 'SETUP - TORNO CONV.']})
+    new_row = pd.DataFrame({'Estação de Trabalho': ['SETUP - Plasma', 'SETUP - TORNO CNC', 'SETUP - FRESA', 'SETUP - CNC', 'SETUP - TORNO CONV.']})
 
     df_above_total = estacoes_todas.iloc[:index_total]
     df_below_total = estacoes_todas.iloc[index_total:]
@@ -750,19 +752,18 @@ with tab5:
     ordens_real_time = ordens_real_time[ordens_real_time['status'] == 1]
 
     ordens_real_time = ordens_real_time[(ordens_real_time['Datetime_ini'].dt.day == now.day) & (ordens_real_time['Datetime_ini'].dt.month == now.month)]
-    # ordens_real_time = ordens_real_time.drop_duplicates(subset='estacao',keep='last')
-
-    # ordens_real_time['status'] = ordens_real_time.apply(lambda row: 'running' if row['status'] == 1 else 'stopped', axis=1)
-
     ordens_real_time.loc[ordens_real_time['estacao'] == 'SET 001', 'status'] = 'setup'
 
     ordens_real_time.loc[ordens_real_time['status'] == 1, 'status'] = 'running'
 
-    ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'] == 'JOAO BATISTA SOARES'),'estacao'] = 'TCNC 001'
-    ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'] == 'JOÃO GUILHERME RIBEIRO DE CARVALHO'),'estacao'] = 'PLM 001'
-    ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'] == 'ADAM JOVANE PIAZZA'),'estacao'] = 'CNC 001'
-    ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'] == 'SIDNEY GERALDO MARINHO'),'estacao'] = 'FRZ 001'
-    ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'] == 'PEDRO LUCAS RODRIGUES SERAFIM'),'estacao'] = 'TCNV 001'
+    funcionario_estacao_map = {
+        'JOAO BATISTA SOARES': 'TCNC 001',
+        'JOÃO GUILHERME RIBEIRO DE CARVALHO': 'PLM 001',
+        'ADAM JOVANE PIAZZA': 'CNC 001',
+        'SIDNEY GERALDO MARINHO': 'FRZ 001',
+        'PEDRO LUCAS RODRIGUES SERAFIM': 'TCNV 001'
+    }
+    ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'].isin(funcionario_estacao_map.keys())),'estacao'] = ordens_real_time['nome_func'].map(funcionario_estacao_map)
 
     svg_path = 'Group 1.svg'
     svg_data = update_svg(svg_path, ordens_real_time, pedidos_real_time)
