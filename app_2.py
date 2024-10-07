@@ -162,7 +162,7 @@ def update_svg(svg_path, data, pedidos):
 
     namespace = {'ns': 'http://www.w3.org/2000/svg'}
     
-    color_map = {'running': '#3ACC55', 'setup':'#ECEC51','stopped': '#FC1010'}
+    color_map = {'running': '#3ACC55', 'setup':'#ECEC51','espera':'#8D86F3','parada':'#00FFFF','stopped': '#FC1010'}
     
     for machine in data.itertuples():
         try:
@@ -754,6 +754,10 @@ with tab5:
     ordens_real_time = ordens_real_time[(ordens_real_time['Datetime_ini'].dt.day == now.day) & (ordens_real_time['Datetime_ini'].dt.month == now.month)]
     ordens_real_time.loc[ordens_real_time['estacao'] == 'SET 001', 'status'] = 'setup'
 
+    ordens_real_time.loc[ordens_real_time['estacao'] == '    001', 'status'] = 'espera'
+
+    ordens_real_time.loc[ordens_real_time['estacao'] == 'PDMQ 001', 'status'] = 'parada'
+
     ordens_real_time.loc[ordens_real_time['status'] == 1, 'status'] = 'running'
 
     funcionario_estacao_map = {
@@ -763,7 +767,11 @@ with tab5:
         'SIDNEY GERALDO MARINHO': 'FRZ 001',
         'PEDRO LUCAS RODRIGUES SERAFIM': 'TCNV 001'
     }
+
     ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'].isin(funcionario_estacao_map.keys())),'estacao'] = ordens_real_time['nome_func'].map(funcionario_estacao_map)
+    ordens_real_time.loc[(ordens_real_time['status'] == 'espera') & (ordens_real_time['nome_func'].isin(funcionario_estacao_map.keys())),'estacao'] = ordens_real_time['nome_func'].map(funcionario_estacao_map)
+    ordens_real_time.loc[(ordens_real_time['status'] == 'parada') & (ordens_real_time['nome_func'].isin(funcionario_estacao_map.keys())),'estacao'] = ordens_real_time['nome_func'].map(funcionario_estacao_map)
+
 
     svg_path = 'Group 1.svg'
     svg_data = update_svg(svg_path, ordens_real_time, pedidos_real_time)
