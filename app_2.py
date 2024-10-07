@@ -434,7 +434,9 @@ with tab1:
 
     ordens_orc = ordens[(ordens['data_ini'].dt.month == target_month) & (ordens['data_ini'].dt.year == target_year)]
 
-    ordens_orc = ordens_orc.drop(ordens_orc[ordens_orc['estacao'] == 'SETUP'].index)
+    ordens_orc = ordens_orc.drop(ordens_orc[ordens_orc['estacao'] == 'SET 001'].index)
+    ordens_orc = ordens_orc.drop(ordens_orc[ordens_orc['estacao'] == 'ESP 001'].index)
+    ordens_orc = ordens_orc.drop(ordens_orc[ordens_orc['estacao'] == 'PDMQ 001'].index)
 
     total_de_horas_trabalhadas = ordens_orc['delta_time_hours'].sum().round(0)
     colunas = ['ACABAMENTO', 'CORTE - SERRA', 'CORTE-PLASMA', 'CORTE-LASER', 'CENTRO DE USINAGEM','DOBRADEIRA','PRENSA (AMASSAMENTO)', 'FRESADORAS','TORNO CONVENCIONAL', 'TORNO CNC','MONTAGEM','SOLDAGEM']
@@ -585,8 +587,6 @@ with tab2:
     estacoes_todas = pd.concat([df_above_total, new_row, df_below_total], ignore_index=True)
 
     estacoes_todas = estacoes_todas.reset_index(drop=True)
-
-    print(estacoes_todas)
 
     soma_por_estacao = estacoes_todas.merge(soma_por_estacao, on='Estação de Trabalho', how='left')
     soma_por_estacao['Tempo de uso total (H:M)'].fillna(0, inplace=True)
