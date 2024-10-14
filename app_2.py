@@ -314,6 +314,7 @@ def transform_ordens(ordens):
     ordens.loc[ordens['nome_func'].str.contains('GUSTAVO'), 'nome_func'] = 'LUIZ GUSTAVO'
     ordens.loc[ordens['nome_func'].str.contains('PEDRO'), 'nome_func'] = 'PEDRO'
     ordens.loc[ordens['nome_func'].str.contains('LUCAS'), 'nome_func'] = 'LUCAS ASSIS'
+    ordens.loc[ordens['nome_func'].str.contains('JAIRO'), 'nome_func'] = 'JAIRO MAXIMO'
     ordens.loc[ordens['nome_func'].str.contains('CLEYTON'), 'nome_func'] = 'CLEYTON'
     ordens.loc[ordens['nome_func'].str.contains('FABRICIO'), 'nome_func'] = 'FABRICIO'
     ordens.loc[ordens['nome_func'].str.contains('MARCOS'), 'nome_func'] = 'ANTONIO MARCOS'
@@ -383,6 +384,7 @@ lista_estacoes = [
     'SOLDA - LUCAS ASSIS',
     'SOLDA - FABRICIO',
     'SOLDA - PABLO',
+    'SOLDA - JAIRO MAXIMO',
     'CORTE - SERRA',
     'CORTE-PLASMA',
     'CORTE-LASER',
@@ -446,7 +448,7 @@ with tab1:
             if not pd.isna(row[coluna]):
                 pedidos_orc.loc[index, coluna] = round((row[coluna]*row['quant_a_fat'])/60,0)
     
-    mapa_maquinas = {'FRESADORA - VALDEMIR': 'FRESADORAS','FRESADORAS - GIOVANNI':'FRESADORAS','FRESADORA - JOÃO PAULO':'FRESADORAS','FRESADORA - SIDNEY':'FRESADORAS','TORNO CONV. - SIDNEY': 'TORNO CONVENCIONAL','TORNO CONV. - GIOVANNI': 'TORNO CONVENCIONAL','TORNO CONV. - JOAO BATISTA': 'TORNO CONVENCIONAL','TORNO CONV. - PEDRO': 'TORNO CONVENCIONAL','TORNO CONV. - ANTONIO MARCOS': 'TORNO CONVENCIONAL','SOLDA - CLEYTON':'SOLDAGEM','SOLDA - LUIZ GUSTAVO':'SOLDAGEM','SOLDA - LUCAS ASSIS':'SOLDAGEM','SOLDA - FABRICIO':'SOLDAGEM','SOLDA - PABLO':'SOLDAGEM','CORTE - SERRA': 'CORTE - SERRA','CORTE-PLASMA': 'CORTE-PLASMA','CORTE-LASER': 'CORTE-LASER','CORTE-GUILHOTINA': 'CORTE-GUILHOTINA','TORNO CNC': 'TORNO CNC','CENTRO DE USINAGEM': 'CENTRO DE USINAGEM','ACABAMENTO': 'ACABAMENTO','DOBRA': 'DOBRADEIRA','PRENSA (AMASSAMENTO)' : 'PRENSA (AMASSAMENTO)','JATO' : 'JATEAMENTO','MONTAGEM':'MONTAGEM'}
+    mapa_maquinas = {'FRESADORA - VALDEMIR': 'FRESADORAS','FRESADORAS - GIOVANNI':'FRESADORAS','FRESADORA - JOÃO PAULO':'FRESADORAS','FRESADORA - SIDNEY':'FRESADORAS','TORNO CONV. - SIDNEY': 'TORNO CONVENCIONAL','TORNO CONV. - GIOVANNI': 'TORNO CONVENCIONAL','TORNO CONV. - JOAO BATISTA': 'TORNO CONVENCIONAL','TORNO CONV. - PEDRO': 'TORNO CONVENCIONAL','TORNO CONV. - ANTONIO MARCOS': 'TORNO CONVENCIONAL','SOLDA - CLEYTON':'SOLDAGEM','SOLDA - JAIRO MAXIMO':'SOLDAGEM','SOLDA - LUIZ GUSTAVO':'SOLDAGEM','SOLDA - LUCAS ASSIS':'SOLDAGEM','SOLDA - FABRICIO':'SOLDAGEM','SOLDA - PABLO':'SOLDAGEM','CORTE - SERRA': 'CORTE - SERRA','CORTE-PLASMA': 'CORTE-PLASMA','CORTE-LASER': 'CORTE-LASER','CORTE-GUILHOTINA': 'CORTE-GUILHOTINA','TORNO CNC': 'TORNO CNC','CENTRO DE USINAGEM': 'CENTRO DE USINAGEM','ACABAMENTO': 'ACABAMENTO','DOBRA': 'DOBRADEIRA','PRENSA (AMASSAMENTO)' : 'PRENSA (AMASSAMENTO)','JATO' : 'JATEAMENTO','MONTAGEM':'MONTAGEM'}
     maquina = next((valor for chave, valor in mapa_maquinas.items() if chave in estacao), 'DESCONHECIDA')
     total_de_horas_orcadas_maquina = pedidos_orc[maquina].sum()
 
