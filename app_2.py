@@ -328,7 +328,6 @@ def transform_ordens(ordens):
     ordens.loc[ordens['estacao'].str.contains('TORNO CONVENCIONAL'), 'estacao'] = ('TORNO CONV.' + ' - ' + ordens['nome_func'])
     ordens.loc[ordens['estacao'].str.contains('FRESADORAS'), 'estacao'] = ('FRESADORA' + ' - ' + ordens['nome_func'])
 
-
     return ordens, ordem, ordens_real_time
 
 @st.cache_data
@@ -345,6 +344,7 @@ def transform_pedidos(pedidos):
 def get_orc():
     orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
     return orc
+                      
 
 st.set_page_config(layout="wide")
 st_autorefresh(interval=300000, key="fizzbuzzcounter")
@@ -361,12 +361,13 @@ st.image('logo.png', width= 150)
 
 orc = get_orc()
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
                                 "ANÁLISE HORA DE TRABALHO MENSAL",
                                 "ANÁLISE HORA DE TRABALHO POR PV",
                                 "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ",
                                 "ANÁLISE MENSAL DE PEDIDOS",
-                                "ACOMPANHAMENTO DA PRODUÇÃO EM TEMPO REAL"
+                                "ACOMPANHAMENTO DA PRODUÇÃO EM TEMPO REAL",
+                                "ACOMPANHAMENTO SOLDADORES"
                                 ])
 
 lista_estacoes = [
@@ -791,6 +792,39 @@ with tab5:
     """
     st.title('Acompanhamento da Produção em Tempo Real')
     st.components.v1.html(html_content, height=700,scrolling=True)
+
+with tab6:
+    
+    ordem_soldadores = ordem[(ordem['estacao'] == 'SOLDAGEM') & (ordem['Datetime_ini'].dt.year == target_year) & (ordem['Datetime_ini'].dt.month == target_month)]
+    ordem_soldadores.loc[ordem_soldadores['nome_func'].str.contains('GUSTAVO'), 'nome_func'] = 'LUIZ GUSTAVO'
+    ordem_soldadores.loc[ordem_soldadores['nome_func'].str.contains('CLEYTON'), 'nome_func'] = 'CLEYTON'
+
+    ordem_soldadores = ordem_soldadores.groupby('nome_func')['delta_time_hours'].sum().reset_index()
+
+    nomes_soldadores = ['CLEYTON','FABRICIO','JAIRO MAXIMO SILVA VICENTE','LUCAS ASSIS','LUIZ GUSTAVO','PABLO']
+    
+    horas_trabalhadas = {}
+
+    for func in nomes_soldadores:
+        horas_trabalhadas[func] = ordem_soldadores.set_index('nome_func')['delta_time_hours'].get(func, 0)
+
+    solda_cleyton = horas_trabalhadas.get('CLEYTON', 0)
+    solda_fabricio = horas_trabalhadas.get('FABRICIO', 0)
+    solda_jairo = horas_trabalhadas.get('JAIRO MAXIMO SILVA VICENTE', 0)
+    solda_lucas = horas_trabalhadas.get('LUCAS ASSIS', 0)
+    solda_luiz = horas_trabalhadas.get('LUIZ GUSTAVO', 0)
+    solda_pablo = horas_trabalhadas.get('PABLO', 0)
+
+    col100,col200,col300 = st.columns(3)
+    col400,col500,col600 = st.columns(3)
+
+    col100.metric(f'Total de horas trabalhadas por CLEYTON', f'{round(solda_cleyton,0)}', f'{round(solda_cleyton-196,0)}')
+    col200.metric(f'Total de horas trabalhadas por FABRICIO', f'{round(solda_fabricio,0)}', f'{round(solda_fabricio-196,0)}')
+    col300.metric(f'Total de horas trabalhadas por JAIRO', f'{round(solda_jairo,0)}', f'{round(solda_jairo-196,0)}')
+
+    col400.metric(f'Total de horas trabalhadas por LUCAS', f'{round(solda_lucas,0)}', f'{round(solda_lucas-196,0)}')
+    col500.metric(f'Total de horas trabalhadas por LUIZ GUSTAVO', f'{round(solda_luiz,0)}', f'{round(solda_luiz-196,0)}')
+    col600.metric(f'Total de horas trabalhadas por PABLO', f'{round(solda_pablo,0)}', f'{round(solda_pablo-196,0)}')
 
 st.markdown("""
     <style>
