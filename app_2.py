@@ -380,12 +380,6 @@ lista_estacoes = [
     'TORNO CONV. - JOAO BATISTA',
     'TORNO CONV. - PEDRO',
     'TORNO CONV. - ANTONIO MARCOS',
-    'SOLDA - CLEYTON',
-    'SOLDA - LUIZ GUSTAVO',
-    'SOLDA - LUCAS ASSIS',
-    'SOLDA - FABRICIO',
-    'SOLDA - PABLO',
-    'SOLDA - JAIRO MAXIMO',
     'CORTE - SERRA',
     'CORTE-PLASMA',
     'CORTE-LASER',
@@ -815,8 +809,12 @@ with tab6:
     solda_luiz = horas_trabalhadas.get('LUIZ GUSTAVO', 0)
     solda_pablo = horas_trabalhadas.get('PABLO', 0)
 
+    col700,col800,col900 = st.columns(3)
     col100,col200,col300 = st.columns(3)
     col400,col500,col600 = st.columns(3)
+
+    total_orcado_soldador = df_long[(df_long['Estação'] == 'SOLDAGEM')].loc[11,'Horas']
+    total_trabalhado = solda_cleyton + solda_fabricio + solda_jairo + solda_luiz + solda_pablo + solda_lucas
 
     col100.metric(f'Total de horas trabalhadas por CLEYTON', f'{round(solda_cleyton,0)}', f'{round(solda_cleyton-196,0)}')
     col200.metric(f'Total de horas trabalhadas por FABRICIO', f'{round(solda_fabricio,0)}', f'{round(solda_fabricio-196,0)}')
@@ -825,6 +823,19 @@ with tab6:
     col400.metric(f'Total de horas trabalhadas por LUCAS', f'{round(solda_lucas,0)}', f'{round(solda_lucas-196,0)}')
     col500.metric(f'Total de horas trabalhadas por LUIZ GUSTAVO', f'{round(solda_luiz,0)}', f'{round(solda_luiz-196,0)}')
     col600.metric(f'Total de horas trabalhadas por PABLO', f'{round(solda_pablo,0)}', f'{round(solda_pablo-196,0)}')
+
+    col700.metric(f'TOTAL DE HORAS ORÇADAS PARA SOLDA', f'{round(total_orcado_soldador,0)}')
+    col800.metric(f'TOTAL DE HORAS TRABALHADAS NO MÊS {target_month}', f'{round(total_trabalhado,0)}')
+    col900.metric(f'EFICIÊNCIA (%) NO MÊS {target_month}', f'{round((total_trabalhado/784)*100,0)} %')
+
+
+    ordem_soldadores['Horas Totais Trabalhadas (H)_label'] = ordem_soldadores['delta_time_hours'].apply(lambda x: f"{(x/total_orcado_soldador)*100:.0f}%")
+
+    fig_solda = px.bar(ordem_soldadores, x = 'nome_func', y ='delta_time_hours' ,text = 'Horas Totais Trabalhadas (H)_label',title= 'Horas Trabalhadas por soldador')
+    fig_solda.update_traces(textfont_size=16, textangle=0, textposition="outside", cliponaxis=False, marker_color='#e53737')
+    fig_solda.update_layout(xaxis_title='Nome Colaborador' ,yaxis_title = 'Horas Totais Trabalhadas(H)', title_x = 0.55, title_y = 0.95,title_xanchor = 'center',xaxis=dict(tickfont=dict(size=14)),title=dict(font=dict(size=16)))
+    fig_solda.update_xaxes(tickmode='linear',dtick=1)
+    st.plotly_chart(fig_solda)
 
 st.markdown("""
     <style>
