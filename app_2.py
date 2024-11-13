@@ -162,7 +162,7 @@ def update_svg(svg_path, data, pedidos):
 
     namespace = {'ns': 'http://www.w3.org/2000/svg'}
     
-    color_map = {'running': '#3ACC55', 'setup':'#ECEC51','espera':'#8D86F3','parada':'#00FFFF','stopped': '#FC1010'}
+    color_map = {'running': '#3ACC55', 'setup':'#ECEC51','espera':'#8D86F3','parada':'#00FFFF','stopped': '#FC1010', 'manutencao': '#ff0000'}
     
     for machine in data.itertuples():
         try:
@@ -247,6 +247,8 @@ def transform_ordens(ordens):
 
     ordens["data_ini"] = pd.to_datetime(ordens["data_ini"], errors='coerce')
     ordens["data_fim"] = pd.to_datetime(ordens["data_fim"], errors='coerce')
+    ordens.loc[ordens['ordem'] == 'PDM 001', 'ordem'] = 0
+    ordens.loc[ordens['ordem'] == 'PDMQ 001', 'ordem'] = 0
 
     ordens_real_time = ordens.copy()
     ordens = ordens[ordens['data_ini'].dt.year >= 2024]
@@ -753,7 +755,10 @@ with tab5:
 
     ordens_real_time.loc[ordens_real_time['estacao'] == '    001', 'status'] = 'espera'
 
-    ordens_real_time.loc[ordens_real_time['estacao'] == 'PDMQ 001', 'status'] = 'parada'
+    ordens_real_time.loc[ordens_real_time['desenho'] == 'PARADA DE MAQUINA', 'status'] = 'parada'
+    
+    ordens_real_time.loc[ordens_real_time['desenho'] == 'PARADA DE MANUTENCAO', 'status'] = 'manutencao'
+
 
     ordens_real_time.loc[ordens_real_time['status'] == 1, 'status'] = 'running'
 
@@ -767,7 +772,7 @@ with tab5:
 
     ordens_real_time.loc[(ordens_real_time['status'] == 'setup') & (ordens_real_time['nome_func'].isin(funcionario_estacao_map.keys())),'estacao'] = ordens_real_time['nome_func'].map(funcionario_estacao_map)
     ordens_real_time.loc[(ordens_real_time['status'] == 'espera') & (ordens_real_time['nome_func'].isin(funcionario_estacao_map.keys())),'estacao'] = ordens_real_time['nome_func'].map(funcionario_estacao_map)
-    ordens_real_time.loc[(ordens_real_time['status'] == 'parada') & (ordens_real_time['nome_func'].isin(funcionario_estacao_map.keys())),'estacao'] = ordens_real_time['nome_func'].map(funcionario_estacao_map)
+    # ordens_real_time.loc[(ordens_real_time['status'] == 'parada') & (ordens_real_time['nome_func'].isin(funcionario_estacao_map.keys())),'estacao'] = ordens_real_time['nome_func'].map(funcionario_estacao_map)
 
 
     svg_path = 'Group 1.svg'
