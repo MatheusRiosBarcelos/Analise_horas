@@ -401,7 +401,7 @@ with tab1:
         date_now = dt.now()
         estacao = st.selectbox("Estação", lista_estacoes, placeholder='Escolha uma opção')
         target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=(date_now.month-1), placeholder='Escolha uma opção')
-        target_year = st.selectbox("Ano", pedidos["entrega"].sort_values().unique(), key=2, index=0, placeholder='Escolha uma opção')
+        target_year = st.selectbox("Ano", pedidos["entrega"].dt.year.sort_values().unique(), key=2, index=0, placeholder='Escolha uma opção')
     
     new_df = ordens[ordens['estacao'] == estacao]
     df_filtrado_year = new_df[new_df['Datetime_ini'].dt.year == target_year]
