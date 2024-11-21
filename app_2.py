@@ -198,8 +198,10 @@ def update_svg(svg_path, data, pedidos):
                             f"\nN° de Peças: {pedido.quant_a_fat.iloc[0]}\n"
                         )
                     else:
-                        st.write(f"Pedido não encontrado para a ordem {apontamento.ordem}")
-
+                        tooltip_text += (
+                            f"\nFuncionário: {apontamento.nome_func}"
+                            f"\nInício: {apontamento.hora_ini}"
+                        )                        
                 title_element.text = tooltip_text.strip()
             else:
                 # st.write(f"Elemento com ID '{machine.estacao}' não encontrado no SVG")
