@@ -460,7 +460,7 @@ with st.sidebar:
             "RELATÓRIO DIÁRIO DE MÁQUINA"
         ],
         icons=["calendar", "list-task", "clock", "bar-chart", "clock-history", "person-standing", "file"],
-        menu_icon="cast",
+        menu_icon="list",
         default_index=0,
         orientation="vertical"
     )
