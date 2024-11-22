@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 from io import StringIO
 from streamlit_autorefresh import st_autorefresh
 from pandas.tseries.offsets import DateOffset
+from streamlit_option_menu import option_menu
 
 def convert_to_HM(x):
     hours = float(x)
@@ -253,6 +254,7 @@ def transform_ordens(ordens):
     ordens.loc[ordens['ordem'] == 'PDMQ 001', 'ordem'] = 0
 
     ordens_real_time = ordens.copy()
+    ordens_diaria = ordens.copy()
     ordens = ordens[ordens['data_ini'].dt.year >= 2024]
 
     ordens['ordem'] = ordens['ordem'].astype(int)
@@ -332,7 +334,7 @@ def transform_ordens(ordens):
     ordens.loc[ordens['estacao'].str.contains('TORNO CONVENCIONAL'), 'estacao'] = ('TORNO CONV.' + ' - ' + ordens['nome_func'])
     ordens.loc[ordens['estacao'].str.contains('FRESADORAS'), 'estacao'] = ('FRESADORA' + ' - ' + ordens['nome_func'])
 
-    return ordens, ordem, ordens_real_time
+    return ordens, ordem, ordens_real_time, ordens_diaria
 
 @st.cache_data
 def transform_pedidos(pedidos):
@@ -349,6 +351,31 @@ def get_orc():
     orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
     return orc
                       
+def get_df_long(pedidos,target_year):
+    inicio_periodo = pd.to_datetime(f'{target_year}-{target_month}-05')
+    fim_periodo = inicio_periodo + DateOffset(months=1)
+
+    pedidos_orc = pedidos[(pedidos['entrega'] >= inicio_periodo) & (pedidos['entrega'] < fim_periodo)]
+
+    pedidos_orc = pedidos_orc.merge(orc, left_on='codprod', right_on='CODIGO', how='left').dropna(subset=['CODIGO'])
+    pedidos_orc['TOTAL'] = pedidos_orc['TOTAL'] * pedidos_orc['quant_a_fat']
+
+    colunas = ['ACABAMENTO', 'CORTE - SERRA', 'CORTE-PLASMA', 'CORTE-LASER', 'CENTRO DE USINAGEM','DOBRADEIRA','PRENSA (AMASSAMENTO)', 'FRESADORAS','TORNO CONVENCIONAL', 'TORNO CNC','MONTAGEM','SOLDAGEM']
+
+    for index, row in pedidos_orc.iterrows():
+        for coluna in colunas:
+            if not pd.isna(row[coluna]):
+                pedidos_orc.loc[index, coluna] = round((row[coluna]*row['quant_a_fat'])/60,0)
+
+    somas = [pedidos_orc[coluna].sum() for coluna in colunas]
+
+    limites = {'FRESADORAS': 392,'CORTE - SERRA': 392,'CORTE-PLASMA': 196,'CORTE-LASER': 196,'TORNO CONVENCIONAL': 392,'TORNO CNC': 196,'CENTRO DE USINAGEM': 196,'DOBRADEIRA': 196,'SOLDAGEM': 980,'ACABAMENTO' : 392, 'MONTAGEM': 392, 'PRENSA (AMASSAMENTO)':196}
+    
+    df_somas = pd.DataFrame({'Estação': colunas, 'Horas Orçadas': somas})
+    df_somas['Limite de Horas'] = df_somas['Estação'].map(limites)
+    df_somas['Horas Restantes'] = df_somas['Limite de Horas'] - df_somas['Horas Orçadas']
+    df_long = df_somas.melt(id_vars='Estação', value_vars=['Horas Orçadas', 'Horas Restantes'], var_name='Tipo', value_name='Horas')
+    return pedidos_orc, df_long
 
 st.set_page_config(layout="wide")
 st_autorefresh(interval=300000, key="fizzbuzzcounter")
@@ -356,7 +383,7 @@ st_autorefresh(interval=300000, key="fizzbuzzcounter")
 engine = get_db_connection()
 ordens, pedidos = fetch_data(engine)
 
-ordens, ordem, ordens_real_time = transform_ordens(ordens)
+ordens, ordem, ordens_real_time, ordens_diaria = transform_ordens(ordens)
 pedidos, pedido, pedidos_real_time = transform_pedidos(pedidos)
 
 colA, colB = st.columns([0.8,0.2])
@@ -364,15 +391,6 @@ colA, colB = st.columns([0.8,0.2])
 st.image('logo.png', width= 150)
 
 orc = get_orc()
-
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-                                "ANÁLISE HORA DE TRABALHO MENSAL",
-                                "ANÁLISE HORA DE TRABALHO POR PV",
-                                "TEMPO MÉDIO PARA A FARBICAÇÃO DE PRODUTOS ",
-                                "ANÁLISE MENSAL DE PEDIDOS",
-                                "ACOMPANHAMENTO DA PRODUÇÃO EM TEMPO REAL",
-                                "ACOMPANHAMENTO SOLDADORES"
-                                ])
 
 lista_estacoes = [
     'FRESADORA - VALDEMIR',
@@ -396,14 +414,68 @@ lista_estacoes = [
     'JATO',
     'MONTAGEM'
     ]
+
 lista_estacoes.sort()
 
-with tab1:
-    with st.sidebar:
-        date_now = dt.now()
+tempo_esperado = {
+        'CORTE-PLASMA': None, 
+        'CORTE - SERRA': None,
+        'CORTE-LASER': None,
+        'CORTE-GUILHOTINA': None,
+        'TORNO CONVENCIONAL': None,
+        'TORNO CNC': None,
+        'FRESADORAS': None,
+        'CENTRO DE USINAGEM': None,
+        'PRENSA (AMASSAMENTO)': None,
+        'DOBRADEIRA': None,
+        'ROSQUEADEIRA': None,
+        'FURADEIRA DE BANCADA': None,
+        'SOLDAGEM': None,
+        'ACABAMENTO': None,
+        'JATEAMENTO': None,
+        'PINTURA': None,
+        'MONTAGEM': None,
+        'CALANDRA': None,
+        'TOTAL': None,
+    }
+
+header_styles = {
+    'selector': 'th.col_heading',
+    'props': [('background-color', 'lightblue'), 
+              ('color', 'black'),
+              ('font-size', '14px'),
+              ('font-weight', 'bold')]
+}
+
+with st.sidebar:
+    selected = option_menu(
+        "Menu",
+        [
+            "ANÁLISE HORA DE TRABALHO MENSAL",
+            "ANÁLISE HORA DE TRABALHO POR PV",
+            "TEMPO MÉDIO PARA A FABRICAÇÃO DE PRODUTOS",
+            "ANÁLISE MENSAL DE PEDIDOS",
+            "ACOMPANHAMENTO DA PRODUÇÃO EM TEMPO REAL",
+            "ACOMPANHAMENTO SOLDADORES",
+            "RELATÓRIO DIÁRIO DE MÁQUINA"
+        ],
+        icons=["calendar", "list-task", "clock", "bar-chart", "clock-history", "person-standing", "file"],
+        menu_icon="cast",
+        default_index=0,
+        orientation="vertical"
+    )
+    date_now = dt.now()
+    if selected == "ANÁLISE HORA DE TRABALHO MENSAL":
         estacao = st.selectbox("Estação", lista_estacoes, placeholder='Escolha uma opção')
         target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=(date_now.month-1), placeholder='Escolha uma opção')
         target_year = st.selectbox("Ano",    pedidos["entrega"].dropna().dt.year.astype(int).sort_values().unique()[pedidos["entrega"].dropna().dt.year.astype(int).unique() >= 2024], key=2, index=0, placeholder='Escolha uma opção')
+    else:
+        target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=(date_now.month-1), placeholder='Escolha uma opção')
+        target_year = st.selectbox("Ano",    pedidos["entrega"].dropna().dt.year.astype(int).sort_values().unique()[pedidos["entrega"].dropna().dt.year.astype(int).unique() >= 2024], key=2, index=0, placeholder='Escolha uma opção')
+
+pedidos_orc, df_long = get_df_long(pedidos, target_year)
+
+if selected == "ANÁLISE HORA DE TRABALHO MENSAL":
     
     new_df = ordens[ordens['estacao'] == estacao]
     df_filtrado_year = new_df[new_df['Datetime_ini'].dt.year == target_year]
@@ -424,13 +496,6 @@ with tab1:
     pedidos['codprod'] = pedidos['codprod'].astype(str)
     orc['CODIGO'] = orc['CODIGO'].astype(str)
 
-    inicio_periodo = pd.to_datetime(f'{target_year}-{target_month}-05')
-    fim_periodo = inicio_periodo + DateOffset(months=1)
-
-    pedidos_orc = pedidos[(pedidos['entrega'] >= inicio_periodo) & (pedidos['entrega'] < fim_periodo)]
-
-    pedidos_orc = pedidos_orc.merge(orc, left_on='codprod', right_on='CODIGO', how='left').dropna(subset=['CODIGO'])
-    pedidos_orc['TOTAL'] = pedidos_orc['TOTAL'] * pedidos_orc['quant_a_fat']
     total_de_horas_orcadas = (pedidos_orc['TOTAL'].sum() / 60).round(0)
 
     ordens_orc = ordens[(ordens['data_ini'].dt.month == target_month) & (ordens['data_ini'].dt.year == target_year)]
@@ -440,12 +505,6 @@ with tab1:
     ordens_orc = ordens_orc.drop(ordens_orc[ordens_orc['estacao'] == 'PDMQ 001'].index)
 
     total_de_horas_trabalhadas = ordens_orc['delta_time_hours'].sum().round(0)
-    colunas = ['ACABAMENTO', 'CORTE - SERRA', 'CORTE-PLASMA', 'CORTE-LASER', 'CENTRO DE USINAGEM','DOBRADEIRA','PRENSA (AMASSAMENTO)', 'FRESADORAS','TORNO CONVENCIONAL', 'TORNO CNC','MONTAGEM','SOLDAGEM']
-
-    for index, row in pedidos_orc.iterrows():
-        for coluna in colunas:
-            if not pd.isna(row[coluna]):
-                pedidos_orc.loc[index, coluna] = round((row[coluna]*row['quant_a_fat'])/60,0)
     
     mapa_maquinas = {'FRESADORA - VALDEMIR': 'FRESADORAS','FRESADORAS - GIOVANNI':'FRESADORAS','FRESADORA - JOÃO PAULO':'FRESADORAS','FRESADORA - SIDNEY':'FRESADORAS','TORNO CONV. - SIDNEY': 'TORNO CONVENCIONAL','TORNO CONV. - GIOVANNI': 'TORNO CONVENCIONAL','TORNO CONV. - JOAO BATISTA': 'TORNO CONVENCIONAL','TORNO CONV. - PEDRO': 'TORNO CONVENCIONAL','TORNO CONV. - ANTONIO MARCOS': 'TORNO CONVENCIONAL','SOLDA - CLEYTON':'SOLDAGEM','SOLDA - JAIRO MAXIMO':'SOLDAGEM','SOLDA - LUIZ GUSTAVO':'SOLDAGEM','SOLDA - LUCAS ASSIS':'SOLDAGEM','SOLDA - FABRICIO':'SOLDAGEM','SOLDA - PABLO':'SOLDAGEM','CORTE - SERRA': 'CORTE - SERRA','CORTE-PLASMA': 'CORTE-PLASMA','CORTE-LASER': 'CORTE-LASER','CORTE-GUILHOTINA': 'CORTE-GUILHOTINA','TORNO CNC': 'TORNO CNC','CENTRO DE USINAGEM': 'CENTRO DE USINAGEM','ACABAMENTO': 'ACABAMENTO','DOBRA': 'DOBRADEIRA','PRENSA (AMASSAMENTO)' : 'PRENSA (AMASSAMENTO)','JATO' : 'JATEAMENTO','MONTAGEM':'MONTAGEM'}
     maquina = next((valor for chave, valor in mapa_maquinas.items() if chave in estacao), 'DESCONHECIDA')
@@ -485,15 +544,7 @@ with tab1:
     fig21.update_xaxes(tickvals=list(range(len(y)+1)))
     col12.plotly_chart(fig21)
 
-    somas = [pedidos_orc[coluna].sum() for coluna in colunas]
-
-    limites = {'FRESADORAS': 392,'CORTE - SERRA': 392,'CORTE-PLASMA': 196,'CORTE-LASER': 196,'TORNO CONVENCIONAL': 392,'TORNO CNC': 196,'CENTRO DE USINAGEM': 196,'DOBRADEIRA': 196,'SOLDAGEM': 980,'ACABAMENTO' : 392, 'MONTAGEM': 392, 'PRENSA (AMASSAMENTO)':196}
     
-    df_somas = pd.DataFrame({'Estação': colunas, 'Horas Orçadas': somas})
-    df_somas['Limite de Horas'] = df_somas['Estação'].map(limites)
-    df_somas['Horas Restantes'] = df_somas['Limite de Horas'] - df_somas['Horas Orçadas']
-    df_long = df_somas.melt(id_vars='Estação', value_vars=['Horas Orçadas', 'Horas Restantes'], var_name='Tipo', value_name='Horas')
-
     fig_71 = px.bar(df_long, x='Estação', y='Horas', color='Tipo', text_auto='.2s', color_discrete_sequence=['#e53737', '#FFCECE'])
     fig_71.update_layout(width=800, height=700, title_x=0.45, title_y=0.95, title_xanchor='center', xaxis=dict(tickfont=dict(size=14)), legend=dict(font=dict(size=14),orientation = 'h',yanchor='top',y=-0.25,xanchor='center',x=0.5), title=dict(text=f'Horas Orçadas e Restantes por Estação no mês {target_month}', font=dict(size=18)))
     fig_71.update_traces(textfont_size=18, textangle=0, textposition="outside", cliponaxis=False)
@@ -502,7 +553,7 @@ with tab1:
 
     col13.plotly_chart(fig_71)
     
-with tab2:
+elif selected == "ANÁLISE HORA DE TRABALHO POR PV":
     col9,col10 = st.columns([0.2,0.8])
     
     col4, col5 = st.columns(2)
@@ -548,28 +599,6 @@ with tab2:
 
     orc_codprod = orc[orc['CODIGO'] == codprod]
 
-    tempo_esperado = {
-        'CORTE-PLASMA': None, 
-        'CORTE - SERRA': None,
-        'CORTE-LASER': None,
-        'CORTE-GUILHOTINA': None,
-        'TORNO CONVENCIONAL': None,
-        'TORNO CNC': None,
-        'FRESADORAS': None,
-        'CENTRO DE USINAGEM': None,
-        'PRENSA (AMASSAMENTO)': None,
-        'DOBRADEIRA': None,
-        'ROSQUEADEIRA': None,
-        'FURADEIRA DE BANCADA': None,
-        'SOLDAGEM': None,
-        'ACABAMENTO': None,
-        'JATEAMENTO': None,
-        'PINTURA': None,
-        'MONTAGEM': None,
-        'CALANDRA': None,
-        'TOTAL': None,
-    }
-
     if not orc_codprod.empty:
         for index, row in orc_codprod.iterrows():
             for key in tempo_esperado.keys():
@@ -606,13 +635,7 @@ with tab2:
     with col5:
         st.markdown(f"<h1 style='font-size: 20px;'>Tabela de Horas por Estação no PV {target_pv}/Número de peças é {quant}</h1>", unsafe_allow_html=True)
     
-    header_styles = {
-    'selector': 'th.col_heading',
-    'props': [('background-color', 'lightblue'), 
-              ('color', 'black'),
-              ('font-size', '14px'),
-              ('font-weight', 'bold')]
-}
+
     col5.table(soma_por_estacao.style.set_table_styles([header_styles]))
     
     col60,col61 = st.columns([0.9,0.1])
@@ -625,7 +648,7 @@ with tab2:
     with col60:
         col60.table(ordem_colunas_selecionas.style.set_table_styles([header_styles]))
     
-with tab3:
+elif selected == "TEMPO MÉDIO PARA A FABRICAÇÃO DE PRODUTOS":
     codprod_target = st.text_input("Código do Produto", value= 'HVHV307164-01')
     number_parts = st.number_input("Quantas peças são", value=int(1), placeholder="Type a number...")
 
@@ -684,7 +707,7 @@ with tab3:
 
     col20.table(merged_df.style.set_table_styles([header_styles]))
     
-with tab4:
+elif selected == "ANÁLISE MENSAL DE PEDIDOS":
     pedidos_1 = pedidos.drop_duplicates(subset=['pedido'], keep='first')
     pedidos_1["entrega"] = pd.to_datetime(pedidos_1["entrega"], format='mixed', errors='coerce')
     pedidos_1 = pedidos_1[pedidos_1['entrega'].dt.month == target_month]
@@ -747,7 +770,7 @@ with tab4:
     col36.plotly_chart(fig3, use_container_width=True)
     col37.plotly_chart(fig4, use_container_width=True)
 
-with tab5:
+elif selected == "ACOMPANHAMENTO DA PRODUÇÃO EM TEMPO REAL":
     now = dt.now()
 
     ordens_real_time = ordens_real_time[ordens_real_time['status'] == 1]
@@ -760,7 +783,6 @@ with tab5:
     ordens_real_time.loc[ordens_real_time['desenho'] == 'PARADA DE MAQUINA', 'status'] = 'parada'
     
     ordens_real_time.loc[ordens_real_time['desenho'] == 'PARADA DE MANUTENCAO', 'status'] = 'manutencao'
-
 
     ordens_real_time.loc[ordens_real_time['status'] == 1, 'status'] = 'running'
 
@@ -794,7 +816,7 @@ with tab5:
     st.title('Acompanhamento da Produção em Tempo Real')
     st.components.v1.html(html_content, height=700,scrolling=True)
 
-with tab6:
+elif selected == "ACOMPANHAMENTO SOLDADORES":
     
     ordem_soldadores = ordem[(ordem['estacao'] == 'SOLDAGEM') & (ordem['Datetime_ini'].dt.year == target_year) & (ordem['Datetime_ini'].dt.month == target_month)]
     ordem_soldadores.loc[ordem_soldadores['nome_func'].str.contains('GUSTAVO'), 'nome_func'] = 'LUIZ GUSTAVO'
@@ -843,6 +865,17 @@ with tab6:
     fig_solda.update_layout(xaxis_title='Nome Colaborador' ,yaxis_title = 'Horas Totais Trabalhadas(H)', title_x = 0.55, title_y = 0.95,title_xanchor = 'center',xaxis=dict(tickfont=dict(size=14)),title=dict(font=dict(size=16)))
     fig_solda.update_xaxes(tickmode='linear',dtick=1)
     st.plotly_chart(fig_solda)
+
+elif selected == "RELATÓRIO DIÁRIO DE MÁQUINA":
+    d = st.date_input("Qual o dia de interesse?", value='today')
+    e = st.selectbox("Máquina", ['CNC 001', 'PLM 001', 'MCL 001', 'SRC 001', 'SRC 002', 'FRZ 001', 'FRZ 002', 'FRZ 003', 'DHCNC 001', 'TCNC 001', 'TCNV 001', 'TCNV 002', 'TCNV 003'], placeholder='Escolha uma opção')
+    ordens_diaria = ordens_diaria[(ordens_diaria['estacao'] == e) & (ordens_diaria['data_ini'].dt.day == d.day) & (ordens_diaria['data_ini'].dt.month == d.month) & (ordens_diaria['data_ini'].dt.year == d.year)]
+    ordens_diaria['delta_time_seconds'] = (ordens_diaria['Datetime_fim'] - ordens_diaria['Datetime_ini']).dt.total_seconds()
+    ordens_diaria['delta_time_hours'] = ordens_diaria['delta_time_seconds'] / 3600
+
+    ordens_diaria = ordens_diaria.drop(labels = ['id', 'user', 'data_ini', 'hora_ini', 'data_fim', 'hora_fim', 'status', 'delta_time_seconds'],axis = 'columns').reset_index(drop=True)
+    ordens_diaria = ordens_diaria.rename(columns = {'ordem':'Ordem', 'desenho':'Desenho', 'estacao':'Estação', 'nome_func':'Colaborador', 'Datetime_ini':'Início', 'Datetime_fim':'Final', 'delta_time_hours':'Tempo de Produção (h)'})
+    st.dataframe(ordens_diaria)
 
 st.markdown("""
     <style>
