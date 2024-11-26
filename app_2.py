@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from datetime  import datetime as dt , timedelta
+import datetime as dt
 import numpy as np
 import plotly.graph_objects as go
 import requests
@@ -254,7 +254,7 @@ def transform_ordens(ordens):
     ordens.loc[ordens['ordem'] == 'PDMQ 001', 'ordem'] = 0
 
     ordens_real_time = ordens.copy()
-    ordens_diaria = ordens.copy()
+    ordens_periodo = ordens.copy()
     ordens = ordens[ordens['data_ini'].dt.year >= 2024]
 
     ordens['ordem'] = ordens['ordem'].astype(int)
@@ -334,7 +334,7 @@ def transform_ordens(ordens):
     ordens.loc[ordens['estacao'].str.contains('TORNO CONVENCIONAL'), 'estacao'] = ('TORNO CONV.' + ' - ' + ordens['nome_func'])
     ordens.loc[ordens['estacao'].str.contains('FRESADORAS'), 'estacao'] = ('FRESADORA' + ' - ' + ordens['nome_func'])
 
-    return ordens, ordem, ordens_real_time, ordens_diaria
+    return ordens, ordem, ordens_real_time, ordens_periodo
 
 @st.cache_data
 def transform_pedidos(pedidos):
@@ -351,9 +351,12 @@ def get_orc():
     orc = pd.read_excel('Processos_de_Fabricacao.xlsx')
     return orc
                       
-def get_df_long(pedidos,target_year):
+def get_df_long(pedidos,target_year,orc):
     inicio_periodo = pd.to_datetime(f'{target_year}-{target_month}-05')
     fim_periodo = inicio_periodo + DateOffset(months=1)
+
+    pedidos['codprod'] = pedidos['codprod'].astype(str)
+    orc['CODIGO'] = orc['CODIGO'].astype(str)
 
     pedidos_orc = pedidos[(pedidos['entrega'] >= inicio_periodo) & (pedidos['entrega'] < fim_periodo)]
 
@@ -383,7 +386,7 @@ st_autorefresh(interval=300000, key="fizzbuzzcounter")
 engine = get_db_connection()
 ordens, pedidos = fetch_data(engine)
 
-ordens, ordem, ordens_real_time, ordens_diaria = transform_ordens(ordens)
+ordens, ordem, ordens_real_time, ordens_periodo = transform_ordens(ordens)
 pedidos, pedido, pedidos_real_time = transform_pedidos(pedidos)
 
 colA, colB = st.columns([0.8,0.2])
@@ -464,7 +467,7 @@ with st.sidebar:
         default_index=0,
         orientation="vertical"
     )
-    date_now = dt.now()
+    date_now = dt.datetime.now()
     if selected == "ANÁLISE HORA DE TRABALHO MENSAL":
         estacao = st.selectbox("Estação", lista_estacoes, placeholder='Escolha uma opção')
         target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=(date_now.month-1), placeholder='Escolha uma opção')
@@ -473,7 +476,7 @@ with st.sidebar:
         target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=(date_now.month-1), placeholder='Escolha uma opção')
         target_year = st.selectbox("Ano",    pedidos["entrega"].dropna().dt.year.astype(int).sort_values().unique()[pedidos["entrega"].dropna().dt.year.astype(int).unique() >= 2024], key=2, index=0, placeholder='Escolha uma opção')
 
-pedidos_orc, df_long = get_df_long(pedidos, target_year)
+pedidos_orc, df_long = get_df_long(pedidos, target_year,orc)
 
 if selected == "ANÁLISE HORA DE TRABALHO MENSAL":
     
@@ -493,9 +496,6 @@ if selected == "ANÁLISE HORA DE TRABALHO MENSAL":
     col2.metric(f'Eficiência (%) da Máquina {estacao}', f'{percent_horas}%', f'{delta_1}%')
     col3.metric(f"Média da Máquina {estacao}", f"{media}H")
     
-    pedidos['codprod'] = pedidos['codprod'].astype(str)
-    orc['CODIGO'] = orc['CODIGO'].astype(str)
-
     total_de_horas_orcadas = (pedidos_orc['TOTAL'].sum() / 60).round(0)
 
     ordens_orc = ordens[(ordens['data_ini'].dt.month == target_month) & (ordens['data_ini'].dt.year == target_year)]
@@ -771,7 +771,7 @@ elif selected == "ANÁLISE MENSAL DE PEDIDOS":
     col37.plotly_chart(fig4, use_container_width=True)
 
 elif selected == "ACOMPANHAMENTO DA PRODUÇÃO EM TEMPO REAL":
-    now = dt.now()
+    now = dt.datetime.now()
 
     ordens_real_time = ordens_real_time[ordens_real_time['status'] == 1]
 
@@ -867,15 +867,29 @@ elif selected == "ACOMPANHAMENTO SOLDADORES":
     st.plotly_chart(fig_solda)
 
 elif selected == "RELATÓRIO DIÁRIO DE MÁQUINA":
-    d = st.date_input("Qual o dia de interesse?", value='today')
-    e = st.selectbox("Máquina", ['CNC 001', 'PLM 001', 'MCL 001', 'SRC 001', 'SRC 002', 'FRZ 001', 'FRZ 002', 'FRZ 003', 'DHCNC 001', 'TCNC 001', 'TCNV 001', 'TCNV 002', 'TCNV 003'], placeholder='Escolha uma opção')
-    ordens_diaria = ordens_diaria[(ordens_diaria['estacao'] == e) & (ordens_diaria['data_ini'].dt.day == d.day) & (ordens_diaria['data_ini'].dt.month == d.month) & (ordens_diaria['data_ini'].dt.year == d.year)]
-    ordens_diaria['delta_time_seconds'] = (ordens_diaria['Datetime_fim'] - ordens_diaria['Datetime_ini']).dt.total_seconds()
-    ordens_diaria['delta_time_hours'] = ordens_diaria['delta_time_seconds'] / 3600
+    today = dt.datetime.now()
+    year = today.year
+    month = today.month
+    month_1 = dt.date(year, month, 1)
+    dec_31 = dt.date(year, 12, 31)
 
-    ordens_diaria = ordens_diaria.drop(labels = ['id', 'user', 'data_ini', 'hora_ini', 'data_fim', 'hora_fim', 'status', 'delta_time_seconds'],axis = 'columns').reset_index(drop=True)
-    ordens_diaria = ordens_diaria.rename(columns = {'ordem':'Ordem', 'desenho':'Desenho', 'estacao':'Estação', 'nome_func':'Colaborador', 'Datetime_ini':'Início', 'Datetime_fim':'Final', 'delta_time_hours':'Tempo de Produção (h)'})
-    st.dataframe(ordens_diaria)
+    d = st.date_input("Selecione o período que deseja",(month_1, dt.date(year, month, 7)),month_1,dec_31,format="YYYY.MM.DD",)
+    
+    e = st.selectbox("Máquina", ['CNC 001', 'PLM 001', 'MCL 001', 'SRC 001', 'SRC 002', 'FRZ 001', 'FRZ 002', 'FRZ 003', 'DHCNC 001', 'TCNC 001', 'TCNV 001', 'TCNV 002', 'TCNV 003'], placeholder='Escolha uma opção')
+    start_date = pd.to_datetime(d[0]) 
+    end_date = pd.to_datetime(d[1])    
+    ordens_periodo = ordens_periodo[(ordens_periodo['estacao'] == e) &(ordens_periodo['data_ini'] >= start_date) &(ordens_periodo['data_ini'] <= end_date)]
+    ordens_periodo['delta_time_seconds'] = (ordens_periodo['Datetime_fim'] - ordens_periodo['Datetime_ini']).dt.total_seconds()
+    ordens_periodo['delta_time_hours'] = ordens_periodo['delta_time_seconds'] / 3600
+
+    ordens_periodo = ordens_periodo.drop(labels = ['id', 'user', 'data_ini', 'hora_ini', 'data_fim', 'hora_fim', 'status', 'delta_time_seconds'],axis = 'columns').reset_index(drop=True)
+    ordens_periodo = ordens_periodo.rename(columns = {'ordem':'Ordem', 'desenho':'Desenho', 'estacao':'Estação', 'nome_func':'Colaborador', 'Datetime_ini':'Início', 'Datetime_fim':'Final', 'delta_time_hours':'Tempo de Produção (h)'})
+    ordens_periodo = ordens_periodo.dropna(subset = ['Final'])
+
+    total_periodo = ordens_periodo['Tempo de Produção (h)'].sum().round()
+
+    st.dataframe(ordens_periodo)
+    
 
 st.markdown("""
     <style>
