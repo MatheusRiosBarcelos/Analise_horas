@@ -875,18 +875,23 @@ elif selected == "RELATÓRIO DIÁRIO DE MÁQUINA":
 
     d = st.date_input("Selecione o período que deseja",(month_1, dt.date(year, month, 7)),month_1,dec_31,format="YYYY.MM.DD",)
     
-    e = st.selectbox("Máquina", ['CNC 001', 'PLM 001', 'MCL 001', 'SRC 001', 'SRC 002', 'FRZ 001', 'FRZ 002', 'FRZ 003', 'DHCNC 001', 'TCNC 001', 'TCNV 001', 'TCNV 002', 'TCNV 003'], placeholder='Escolha uma opção')
     start_date = pd.to_datetime(d[0]) 
     end_date = pd.to_datetime(d[1])    
-    ordens_periodo = ordens_periodo[(ordens_periodo['estacao'] == e) &(ordens_periodo['data_ini'] >= start_date) &(ordens_periodo['data_ini'] <= end_date)]
+    ordens_periodo = ordens_periodo[(ordens_periodo['data_ini'] >= start_date) &(ordens_periodo['data_ini'] <= end_date)]
+    
+    e = st.selectbox("Selecione o Colaborador", ordens_periodo['nome_func'].unique(), placeholder='Escolha uma opção')
+    
+    ordens_periodo = ordens_periodo[ordens_periodo['nome_func'] == e]
+
     ordens_periodo['delta_time_seconds'] = (ordens_periodo['Datetime_fim'] - ordens_periodo['Datetime_ini']).dt.total_seconds()
     ordens_periodo['delta_time_hours'] = ordens_periodo['delta_time_seconds'] / 3600
 
-    ordens_periodo = ordens_periodo.drop(labels = ['id', 'user', 'data_ini', 'hora_ini', 'data_fim', 'hora_fim', 'status', 'delta_time_seconds'],axis = 'columns').reset_index(drop=True)
+    ordens_periodo = ordens_periodo.drop(labels = ['id', 'data_ini', 'hora_ini', 'data_fim', 'hora_fim', 'status', 'delta_time_seconds'],axis = 'columns').reset_index(drop=True)
     ordens_periodo = ordens_periodo.rename(columns = {'ordem':'Ordem', 'desenho':'Desenho', 'estacao':'Estação', 'nome_func':'Colaborador', 'Datetime_ini':'Início', 'Datetime_fim':'Final', 'delta_time_hours':'Tempo de Produção (h)'})
     ordens_periodo = ordens_periodo.dropna(subset = ['Final'])
-
     total_periodo = ordens_periodo['Tempo de Produção (h)'].sum().round()
+
+
 
     st.dataframe(ordens_periodo)
     
