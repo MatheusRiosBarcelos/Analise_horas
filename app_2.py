@@ -12,8 +12,11 @@ from io import StringIO
 from streamlit_autorefresh import st_autorefresh
 from pandas.tseries.offsets import DateOffset
 from streamlit_option_menu import option_menu
+import math
 
 def convert_to_HM(x):
+    if math.isnan(x):
+        return "Não Orçado"
     hours = float(x)
     h = int(hours)
     m = int((hours - h) * 60)
@@ -264,7 +267,7 @@ def transform_ordens(ordens):
     ordens['delta_time_min'] = ordens['delta_time_seconds'] / 60
 
     substituicoes = {
-                    'JPS': 'JATO',
+                    'JPS': 'JATEAMENTO',
                     'FRZ': 'FRESADORAS',
                     'TCNV': 'TORNO CONVENCIONAL',
                     'MQS': 'SOLDAGEM',
@@ -292,6 +295,7 @@ def transform_ordens(ordens):
                     'DBE 001': 'DOBRADEIRA',
                     'DHCN': 'DOBRADEIRA',
                     'DBEP': 'PRENSA (AMASSAMENTO)',
+                    'RQE' : 'ROSQUEADEIRA'
                     }
 
     for key, value in substituicoes.items():
@@ -416,7 +420,7 @@ lista_estacoes = [
     'ACABAMENTO',
     'DOBRADEIRA',
     'PRENSA (AMASSAMENTO)',
-    'JATO',
+    'JATEAMENTO',
     'MONTAGEM'
     ]
 
@@ -446,7 +450,7 @@ tempo_esperado = {
 
 header_styles = {
     'selector': 'th.col_heading',
-    'props': [('background-color', 'lightblue'), 
+    'props': [('background-color', 'white'), 
               ('color', 'black'),
               ('font-size', '14px'),
               ('font-weight', 'bold')]
@@ -661,8 +665,11 @@ elif selected == "TEMPO MÉDIO PARA A FABRICAÇÃO DE PRODUTOS":
     ordem_cod['ordem'] = ordem_cod['ordem'].astype(str)
     ordem_cod = ordem_cod[ordem_cod['ordem'].isin(filtro_df_cod)]
 
+    ordem_cod.drop(ordem_cod[ordem_cod['estacao'] == 'SET 001'].index, inplace=True)
+
     ordem_cod = ordem_cod[ordem_cod['data_ini'].dt.year == 2024]
     merged_df = pd.merge(pedido_cod, ordem_cod, on='ordem', how='left')
+
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'] / merged_df['quant_a_fat']
     
     merged_df['delta_time_hours'] = merged_df['delta_time_hours'].replace([np.inf, -np.inf], np.nan)
@@ -696,18 +703,33 @@ elif selected == "TEMPO MÉDIO PARA A FABRICAÇÃO DE PRODUTOS":
         merged_df['Tempo no Orçamento'] = pd.Series([np.nan] * len(merged_df))
         for index, row in orc_codprod.iterrows():
             for key in tempo_esperado.keys():
-                if key in orc_codprod.columns and not pd.isna(row[key]):
+                if key in orc_codprod.columns:
                     tempo_esperado[key] = convert_to_HM((row[key] / 60) * number_parts)
 
     for estacao, tempo in tempo_esperado.items():
         if (merged_df['Operação'] == estacao).any():
             merged_df.loc[merged_df['Operação'] == estacao, 'Tempo no Orçamento'] = tempo
+        elif ((merged_df['Operação'] != estacao) & (tempo != 'Não Orçado')).any():
+            # merged_df.loc[len(merged_df)] = [estacao, 'Não Apontado', tempo]
+            new_row_2 = pd.DataFrame({'Operação': [estacao],'Tempo Médio de Uso (H:M)':['Não Apontado'], 'Tempo no Orçamento':[tempo]})
+            merged_df = pd.concat([new_row_2, merged_df], ignore_index=True)
+
+
 
     st.markdown(f"<h1 style='text-align: left;'>{descricao_2}</h1>", unsafe_allow_html=True)
 
     col20,col21 = st.columns([0.9,0.1])
 
-    col20.table(merged_df.style.set_table_styles([header_styles]))
+    mask = (merged_df['Tempo Médio de Uso (H:M)'] > merged_df['Tempo no Orçamento'])
+    slice_ = pd.IndexSlice[mask[mask].index, ['Tempo Médio de Uso (H:M)','Tempo no Orçamento','Operação']] 
+
+    mask_2 = merged_df['Tempo Médio de Uso (H:M)'] <= merged_df['Tempo no Orçamento']
+    slice_2 = pd.IndexSlice[mask_2[mask_2].index, ['Tempo Médio de Uso (H:M)','Tempo no Orçamento','Operação']]
+
+    mask_3 = merged_df['Tempo no Orçamento'] == 'Não Orçado'
+    slice_3 = pd.IndexSlice[mask_3[mask_3].index, ['Tempo Médio de Uso (H:M)','Tempo no Orçamento','Operação']] 
+
+    col20.table(merged_df.style.set_table_styles([header_styles]).set_properties(**{'background-color': '#fc5b5b'},subset=slice_).set_properties(**{'background-color': '#8efaa4'},subset=slice_2).set_properties(**{'background-color': '#8eeef5'},subset=slice_3))
     
 elif selected == "ANÁLISE MENSAL DE PEDIDOS":
     pedidos_1 = pedidos.drop_duplicates(subset=['pedido'], keep='first')
@@ -895,7 +917,22 @@ elif selected == "ANÁLISE DESEMPENHO COLABORADORES":
     ordens_periodo = ordens_periodo.merge(pedidos, on='ordem',how= 'inner')
     ordens_periodo['datas'] = ordens_periodo['Início'].dt.date
 
-    ordens_datas = ordens_periodo.groupby('datas')['Tempo de Produção (h)'].sum().round(1).reset_index()
+    ordens_periodo = ordens_periodo.sort_values("Início").reset_index(drop=True)
+
+    group = 0
+    groups = [group]
+
+    for i in range(1, len(ordens_periodo)):
+        if (ordens_periodo.loc[i, "Início"] - ordens_periodo.loc[i - 1, "Início"]).total_seconds() > 4 * 60:
+            group += 1
+        groups.append(group)
+
+    ordens_periodo["group"] = groups
+
+    df_unique = ordens_periodo.groupby("group").first().reset_index()
+
+
+    ordens_datas = df_unique.groupby('datas')['Tempo de Produção (h)'].sum().round(1).reset_index()
 
     colC, colD = st.columns(2)
 
@@ -921,8 +958,8 @@ elif selected == "ANÁLISE DESEMPENHO COLABORADORES":
     st.plotly_chart(figA)
     # orc = orc[['CODIGO','TOTAL']]
     # ordens_periodo = ordens_periodo.merge(orc,left_on='codprod', right_on='CODIGO', how='left')
-    ordens_periodo = ordens_periodo.drop(labels =['datas','Desenho'], axis='columns')
-    st.dataframe(ordens_periodo,use_container_width = True)
+    df_unique = df_unique.drop(labels =['datas','Desenho', 'group', 'codprod'], axis='columns')
+    st.dataframe(df_unique,use_container_width = True)
     
 
 st.markdown("""
