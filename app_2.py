@@ -16,7 +16,7 @@ import math
 
 def convert_to_HM(x):
     if math.isnan(x):
-        return "Não Orçado"
+        return "Não está no Orçamento"
     hours = float(x)
     h = int(hours)
     m = int((hours - h) * 60)
@@ -636,7 +636,7 @@ elif selected == "ANÁLISE HORA DE TRABALHO POR PV":
     soma_por_estacao  = soma_por_estacao[soma_por_estacao['Estação de Trabalho'] != 'ADM']
     soma_por_estacao  = soma_por_estacao[soma_por_estacao['Estação de Trabalho'] != 'QUALIDADE']
     soma_por_estacao = soma_por_estacao.reset_index(drop=True)
-    soma_por_estacao['Tempo esperado no Orçamento'] = soma_por_estacao['Tempo esperado no Orçamento'].fillna('Não Orçado')
+    soma_por_estacao['Tempo esperado no Orçamento'] = soma_por_estacao['Tempo esperado no Orçamento'].fillna('Não está no Orçamento')
     
     col4.plotly_chart(fig, use_container_width=True)
     with col5:
@@ -648,7 +648,7 @@ elif selected == "ANÁLISE HORA DE TRABALHO POR PV":
     mask_2 = soma_por_estacao['Tempo de uso total (H:M)'] <= soma_por_estacao['Tempo esperado no Orçamento']
     slice_2 = pd.IndexSlice[mask_2[mask_2].index, ['Tempo de uso total (H:M)','Tempo esperado no Orçamento','Estação de Trabalho']]
 
-    mask_3 = soma_por_estacao['Tempo esperado no Orçamento'] == 'Não Orçado'
+    mask_3 = soma_por_estacao['Tempo esperado no Orçamento'] == 'Não está no Orçamento'
     slice_3 = pd.IndexSlice[mask_3[mask_3].index, ['Tempo de uso total (H:M)','Tempo esperado no Orçamento','Estação de Trabalho']] 
 
     col5.table(soma_por_estacao.style.set_table_styles([header_styles]).set_properties(**{'background-color': '#fc5b5b'},subset=slice_).set_properties(**{'background-color': '#8efaa4'},subset=slice_2).set_properties(**{'background-color': '#e5f24e'},subset=slice_3))
@@ -720,7 +720,7 @@ elif selected == "TEMPO MÉDIO PARA A FABRICAÇÃO DE PRODUTOS":
     for estacao, tempo in tempo_esperado.items():
         if (merged_df['Operação'] == estacao).any():
             merged_df.loc[merged_df['Operação'] == estacao, 'Tempo no Orçamento'] = tempo
-        elif ((merged_df['Operação'] != estacao) & (tempo != 'Não Orçado')).any():
+        elif ((merged_df['Operação'] != estacao) & (tempo != 'Não está no Orçamento')).any():
             # merged_df.loc[len(merged_df)] = [estacao, 'Não Apontado', tempo]
             new_row_2 = pd.DataFrame({'Operação': [estacao],'Tempo Médio de Uso (H:M)':['Não Apontado'], 'Tempo no Orçamento':[tempo]})
             merged_df = pd.concat([new_row_2, merged_df], ignore_index=True)
@@ -737,7 +737,7 @@ elif selected == "TEMPO MÉDIO PARA A FABRICAÇÃO DE PRODUTOS":
     mask_2 = merged_df['Tempo Médio de Uso (H:M)'] <= merged_df['Tempo no Orçamento']
     slice_2 = pd.IndexSlice[mask_2[mask_2].index, ['Tempo Médio de Uso (H:M)','Tempo no Orçamento','Operação']]
 
-    mask_3 = merged_df['Tempo no Orçamento'] == 'Não Orçado'
+    mask_3 = merged_df['Tempo no Orçamento'] == 'Não está no Orçamento'
     slice_3 = pd.IndexSlice[mask_3[mask_3].index, ['Tempo Médio de Uso (H:M)','Tempo no Orçamento','Operação']] 
 
     col20.table(merged_df.style.set_table_styles([header_styles]).set_properties(**{'background-color': '#fc5b5b'},subset=slice_).set_properties(**{'background-color': '#8efaa4'},subset=slice_2).set_properties(**{'background-color': '#e5f24e'},subset=slice_3))
