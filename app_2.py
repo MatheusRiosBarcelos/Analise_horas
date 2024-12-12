@@ -450,9 +450,9 @@ tempo_esperado = {
 
 header_styles = {
     'selector': 'th.col_heading',
-    'props': [('background-color', 'white'), 
+    'props': [('background-color', 'grey'), 
               ('color', 'black'),
-              ('font-size', '14px'),
+              ('font-size', '18px'),
               ('font-weight', 'bold')]
 }
 
@@ -636,13 +636,24 @@ elif selected == "ANÁLISE HORA DE TRABALHO POR PV":
     soma_por_estacao  = soma_por_estacao[soma_por_estacao['Estação de Trabalho'] != 'ADM']
     soma_por_estacao  = soma_por_estacao[soma_por_estacao['Estação de Trabalho'] != 'QUALIDADE']
     soma_por_estacao = soma_por_estacao.reset_index(drop=True)
+    soma_por_estacao['Tempo esperado no Orçamento'] = soma_por_estacao['Tempo esperado no Orçamento'].fillna('Não Orçado')
     
     col4.plotly_chart(fig, use_container_width=True)
     with col5:
         st.markdown(f"<h1 style='font-size: 20px;'>Tabela de Horas por Estação no PV {target_pv}/Número de peças é {quant}</h1>", unsafe_allow_html=True)
     
+    mask = (soma_por_estacao['Tempo de uso total (H:M)'] > soma_por_estacao['Tempo esperado no Orçamento'])
+    slice_ = pd.IndexSlice[mask[mask].index, ['Tempo de uso total (H:M)','Tempo esperado no Orçamento','Estação de Trabalho']] 
 
-    col5.table(soma_por_estacao.style.set_table_styles([header_styles]))
+    mask_2 = soma_por_estacao['Tempo de uso total (H:M)'] <= soma_por_estacao['Tempo esperado no Orçamento']
+    slice_2 = pd.IndexSlice[mask_2[mask_2].index, ['Tempo de uso total (H:M)','Tempo esperado no Orçamento','Estação de Trabalho']]
+
+    mask_3 = soma_por_estacao['Tempo esperado no Orçamento'] == 'Não Orçado'
+    slice_3 = pd.IndexSlice[mask_3[mask_3].index, ['Tempo de uso total (H:M)','Tempo esperado no Orçamento','Estação de Trabalho']] 
+
+    col5.table(soma_por_estacao.style.set_table_styles([header_styles]).set_properties(**{'background-color': '#fc5b5b'},subset=slice_).set_properties(**{'background-color': '#8efaa4'},subset=slice_2).set_properties(**{'background-color': '#e5f24e'},subset=slice_3))
+
+    # col5.table(soma_por_estacao.style.set_table_styles([header_styles]))
     
     col60,col61 = st.columns([0.9,0.1])
     colunas_selecionadas = ['ordem', 'estacao', 'nome_func', 'Datetime_ini', 'Datetime_fim']
@@ -729,7 +740,7 @@ elif selected == "TEMPO MÉDIO PARA A FABRICAÇÃO DE PRODUTOS":
     mask_3 = merged_df['Tempo no Orçamento'] == 'Não Orçado'
     slice_3 = pd.IndexSlice[mask_3[mask_3].index, ['Tempo Médio de Uso (H:M)','Tempo no Orçamento','Operação']] 
 
-    col20.table(merged_df.style.set_table_styles([header_styles]).set_properties(**{'background-color': '#fc5b5b'},subset=slice_).set_properties(**{'background-color': '#8efaa4'},subset=slice_2).set_properties(**{'background-color': '#8eeef5'},subset=slice_3))
+    col20.table(merged_df.style.set_table_styles([header_styles]).set_properties(**{'background-color': '#fc5b5b'},subset=slice_).set_properties(**{'background-color': '#8efaa4'},subset=slice_2).set_properties(**{'background-color': '#e5f24e'},subset=slice_3))
     
 elif selected == "ANÁLISE MENSAL DE PEDIDOS":
     pedidos_1 = pedidos.drop_duplicates(subset=['pedido'], keep='first')
@@ -961,7 +972,6 @@ elif selected == "ANÁLISE DESEMPENHO COLABORADORES":
     df_unique = df_unique.drop(labels =['datas','Desenho', 'group', 'codprod'], axis='columns')
     st.dataframe(df_unique,use_container_width = True)
     
-
 st.markdown("""
     <style>
     /* Centralizar o conteúdo dentro do label do st.metric */
