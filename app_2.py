@@ -477,10 +477,10 @@ with st.sidebar:
     if selected == "ANÁLISE HORA DE TRABALHO MENSAL":
         estacao = st.selectbox("Estação", lista_estacoes, placeholder='Escolha uma opção')
         target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=(date_now.month-1), placeholder='Escolha uma opção')
-        target_year = st.selectbox("Ano",    pedidos["entrega"].dropna().dt.year.astype(int).sort_values().unique()[pedidos["entrega"].dropna().dt.year.astype(int).unique() >= 2024], key=2, index=0, placeholder='Escolha uma opção')
+        target_year = st.selectbox("Ano",    pedidos["entrega"].dropna().dt.year.astype(int).sort_values().unique()[pedidos["entrega"].dropna().dt.year.astype(int).unique() >= 2024], key=2, index=1, placeholder='Escolha uma opção')
     else:
         target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=(date_now.month-1), placeholder='Escolha uma opção')
-        target_year = st.selectbox("Ano",    pedidos["entrega"].dropna().dt.year.astype(int).sort_values().unique()[pedidos["entrega"].dropna().dt.year.astype(int).unique() >= 2024], key=2, index=0, placeholder='Escolha uma opção')
+        target_year = st.selectbox("Ano",    pedidos["entrega"].dropna().dt.year.astype(int).sort_values().unique()[pedidos["entrega"].dropna().dt.year.astype(int).unique() >= 2024], key=2, index=1, placeholder='Escolha uma opção')
 
 pedidos_orc, df_long = get_df_long(pedidos, target_year,orc)
 
@@ -661,8 +661,9 @@ elif selected == "ANÁLISE HORA DE TRABALHO POR PV":
     ordem_colunas_selecionas = ordem_ped[colunas_selecionadas]
     ordem_colunas_selecionas = ordem_colunas_selecionas.reset_index(drop=True)
     ordem_colunas_selecionas.rename(columns={'ordem': 'Ordem', 'nome_func': 'Nome Colaborador', 'Datetime_ini': 'Data/Hora Inicial', 'Datetime_fim': 'Data/Hora Final'}, inplace=True)
-
+    
     with col60:
+        st.markdown('<h1>Apontamentos</h1>', unsafe_allow_html=True)
         col60.table(ordem_colunas_selecionas.style.set_table_styles([header_styles]))
     
 elif selected == "TEMPO MÉDIO PARA A FABRICAÇÃO DE PRODUTOS":
