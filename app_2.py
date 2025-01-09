@@ -14,6 +14,16 @@ from pandas.tseries.offsets import DateOffset
 from streamlit_option_menu import option_menu
 import math
 
+def convert_to_decimal(hm):
+    # Verifica se é o valor "Não está no Orçamento"
+    if isinstance(hm, str) and hm == "Não está no Orçamento":
+        return float('nan')  # Retorna NaN
+    try:
+        h, m = map(int, hm.split(":"))
+        return h + m / 60.0
+    except ValueError:  # Caso a string não tenha o formato correto "H:M"
+        return float('nan')
+
 def convert_to_HM(x):
     if math.isnan(x):
         return "Não está no Orçamento"
@@ -642,10 +652,10 @@ elif selected == "ANÁLISE HORA DE TRABALHO POR PV":
     with col5:
         st.markdown(f"<h1 style='font-size: 20px;'>Tabela de Horas por Estação no PV {target_pv}/Número de peças é {quant}</h1>", unsafe_allow_html=True)
     
-    mask = (soma_por_estacao['Tempo de uso total (H:M)'] > soma_por_estacao['Tempo esperado no Orçamento'])
+    mask = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_decimal) > soma_por_estacao['Tempo esperado no Orçamento'].apply(convert_to_decimal)
     slice_ = pd.IndexSlice[mask[mask].index, ['Tempo de uso total (H:M)','Tempo esperado no Orçamento','Estação de Trabalho']] 
 
-    mask_2 = soma_por_estacao['Tempo de uso total (H:M)'] <= soma_por_estacao['Tempo esperado no Orçamento']
+    mask_2 = soma_por_estacao['Tempo de uso total (H:M)'].apply(convert_to_decimal) <= soma_por_estacao['Tempo esperado no Orçamento'].apply(convert_to_decimal)
     slice_2 = pd.IndexSlice[mask_2[mask_2].index, ['Tempo de uso total (H:M)','Tempo esperado no Orçamento','Estação de Trabalho']]
 
     mask_3 = soma_por_estacao['Tempo esperado no Orçamento'] == 'Não está no Orçamento'
