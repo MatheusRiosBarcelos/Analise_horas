@@ -651,7 +651,7 @@ elif selected == "ANÁLISE HORA DE TRABALHO POR PV":
     mask_3 = soma_por_estacao['Tempo esperado no Orçamento'] == 'Não está no Orçamento'
     slice_3 = pd.IndexSlice[mask_3[mask_3].index, ['Tempo de uso total (H:M)','Tempo esperado no Orçamento','Estação de Trabalho']] 
 
-    mask_4 = soma_por_estacao['Tempo de uso Total (H:M)'] == 'Não Apontado'
+    mask_4 = soma_por_estacao['Tempo de uso total (H:M)'] == 'Não Apontado'
     slice_4 = pd.IndexSlice[mask_4[mask_4].index, ['Tempo de uso total (H:M)','Tempo esperado no Orçamento','Estação de Trabalho']] 
 
 
