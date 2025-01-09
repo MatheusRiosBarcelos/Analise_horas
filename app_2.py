@@ -651,7 +651,11 @@ elif selected == "ANÁLISE HORA DE TRABALHO POR PV":
     mask_3 = soma_por_estacao['Tempo esperado no Orçamento'] == 'Não está no Orçamento'
     slice_3 = pd.IndexSlice[mask_3[mask_3].index, ['Tempo de uso total (H:M)','Tempo esperado no Orçamento','Estação de Trabalho']] 
 
-    col5.table(soma_por_estacao.style.set_table_styles([header_styles]).set_properties(**{'background-color': '#fc5b5b'},subset=slice_).set_properties(**{'background-color': '#8efaa4'},subset=slice_2).set_properties(**{'background-color': '#e5f24e'},subset=slice_3))
+    mask_4 = soma_por_estacao['Tempo de uso Total (H:M)'] == 'Não Apontado'
+    slice_4 = pd.IndexSlice[mask_4[mask_4].index, ['Tempo de uso total (H:M)','Tempo esperado no Orçamento','Estação de Trabalho']] 
+
+
+    col5.table(soma_por_estacao.style.set_table_styles([header_styles]).set_properties(**{'background-color': '#fc5b5b'},subset=slice_).set_properties(**{'background-color': '#8efaa4'},subset=slice_2).set_properties(**{'background-color': '#e5f24e'},subset=slice_3).set_properties(**{'background-color': '#f59e64'},subset=slice_4))
 
     # col5.table(soma_por_estacao.style.set_table_styles([header_styles]))
     
