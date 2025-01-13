@@ -15,13 +15,12 @@ from streamlit_option_menu import option_menu
 import math
 
 def convert_to_decimal(hm):
-    # Verifica se é o valor "Não está no Orçamento"
     if isinstance(hm, str) and hm == "Não está no Orçamento":
-        return float('nan')  # Retorna NaN
+        return float('nan')
     try:
         h, m = map(int, hm.split(":"))
         return h + m / 60.0
-    except ValueError:  # Caso a string não tenha o formato correto "H:M"
+    except ValueError:
         return float('nan')
 
 def convert_to_HM(x):
@@ -484,13 +483,17 @@ with st.sidebar:
         orientation="vertical"
     )
     date_now = dt.datetime.now()
-    if selected == "ANÁLISE HORA DE TRABALHO MENSAL":
-        estacao = st.selectbox("Estação", lista_estacoes, placeholder='Escolha uma opção')
-        target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=(date_now.month-1), placeholder='Escolha uma opção')
-        target_year = st.selectbox("Ano",    pedidos["entrega"].dropna().dt.year.astype(int).sort_values().unique()[pedidos["entrega"].dropna().dt.year.astype(int).unique() >= 2024], key=2, index=1, placeholder='Escolha uma opção')
-    else:
-        target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=(date_now.month-1), placeholder='Escolha uma opção')
-        target_year = st.selectbox("Ano",    pedidos["entrega"].dropna().dt.year.astype(int).sort_values().unique()[pedidos["entrega"].dropna().dt.year.astype(int).unique() >= 2024], key=2, index=1, placeholder='Escolha uma opção')
+    with st.form("Form"):
+
+        if selected == "ANÁLISE HORA DE TRABALHO MENSAL":
+            estacao = st.selectbox("Estação", lista_estacoes, placeholder='Escolha uma opção')
+            target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=(date_now.month-1), placeholder='Escolha uma opção')
+            target_year = st.selectbox("Ano",    pedidos["entrega"].dropna().dt.year.astype(int).sort_values().unique()[pedidos["entrega"].dropna().dt.year.astype(int).unique() >= 2024], key=2, index=1, placeholder='Escolha uma opção')
+        else:
+            target_month = st.selectbox("Mês", pedidos["entrega"].dt.month.dropna().astype(int).sort_values().unique(), key=1, index=(date_now.month-1), placeholder='Escolha uma opção')
+            target_year = st.selectbox("Ano",    pedidos["entrega"].dropna().dt.year.astype(int).sort_values().unique()[pedidos["entrega"].dropna().dt.year.astype(int).unique() >= 2024], key=2, index=1, placeholder='Escolha uma opção')
+        
+        st.form_submit_button('Atualizar')
 
 pedidos_orc, df_long = get_df_long(pedidos, target_year,orc)
 
@@ -922,14 +925,15 @@ elif selected == "ANÁLISE DESEMPENHO COLABORADORES":
     month = today.month
     month_1 = dt.date(year, month, 1)
     dec_31 = dt.date(year, 12, 31)
-
-    d = st.date_input("Selecione o período que deseja",(month_1, dt.date(year, month, today.day)),dt.date(year, 1, 1),dec_31,format="YYYY.MM.DD",)
-    
-    start_date = pd.to_datetime(d[0]) 
-    end_date = pd.to_datetime(d[1])    
-    ordens_periodo = ordens_periodo[(ordens_periodo['data_ini'] >= start_date) &(ordens_periodo['data_ini'] <= end_date)]
-    
-    e = st.selectbox("Selecione o Colaborador", ordens_periodo['nome_func'].unique(), placeholder='Escolha uma opção')
+    with st.form("Form_2"):
+        d = st.date_input("Selecione o período que deseja",(month_1, dt.date(year, month, today.day)),dt.date(year, 1, 1),dec_31,format="YYYY.MM.DD",)
+        
+        start_date = pd.to_datetime(d[0]) 
+        end_date = pd.to_datetime(d[1])    
+        ordens_periodo = ordens_periodo[(ordens_periodo['data_ini'] >= start_date) &(ordens_periodo['data_ini'] <= end_date)]
+        
+        e = st.selectbox("Selecione o Colaborador", ordens_periodo['nome_func'].unique(), placeholder='Escolha uma opção')
+        st.form_submit_button('Atualizar')
     
     ordens_periodo = ordens_periodo[ordens_periodo['nome_func'] == e]
     
