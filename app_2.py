@@ -483,7 +483,7 @@ with st.sidebar:
         orientation="vertical"
     )
     date_now = dt.datetime.now()
-    with st.form("Form", clear_on_submit=True,border=False):
+    with st.form("Form",border=False):
 
         if selected == "ANÁLISE HORA DE TRABALHO MENSAL":
             estacao = st.selectbox("Estação", lista_estacoes, placeholder='Escolha uma opção')
@@ -925,7 +925,7 @@ elif selected == "ANÁLISE DESEMPENHO COLABORADORES":
     month = today.month
     month_1 = dt.date(year, month, 1)
     dec_31 = dt.date(year, 12, 31)
-    with st.form("Form_2",clear_on_submit=True,border=False):
+    with st.form("Form_2",border=False):
         d = st.date_input("Selecione o período que deseja",(month_1, dt.date(year, month, today.day)),dt.date(year, 1, 1),dec_31,format="YYYY.MM.DD",)
         
         start_date = pd.to_datetime(d[0]) 
