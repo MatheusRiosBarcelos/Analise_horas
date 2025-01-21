@@ -231,7 +231,7 @@ def update_svg(svg_path, data, pedidos):
 @st.cache_resource
 def get_db_connection():
     username = 'usinag87_matheus'
-    password = '%40Elohim32'
+    password = 'mineiro12369'
     host = 'usinagemelohim.com.br'
     port = '3306'
     database = 'usinag87_controleprod'
