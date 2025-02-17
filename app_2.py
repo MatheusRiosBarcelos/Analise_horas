@@ -230,11 +230,11 @@ def update_svg(svg_path, data, pedidos):
 
 @st.cache_resource
 def get_db_connection():
-    username = 'usinag87_matheus'
+    username = 'capsys31_matheus'
     password = 'mineiro12369'
-    host = 'usinagemelohim.com.br'
+    host = '162.241.203.202'
     port = '3306'
-    database = 'usinag87_controleprod'
+    database = 'capsys31_elohim'
     
     connection_string = f'mysql+mysqlconnector://{username}:{password}@{host}:{port}/{database}'
     engine = create_engine(connection_string)
