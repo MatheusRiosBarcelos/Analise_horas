@@ -253,6 +253,8 @@ def fetch_data(_engine):
 @st.cache_data
 def transform_ordens(ordens):
     ordens = ordens[ordens['estacao'] != 'Selecione...']
+    ordens['ordem'] = ordens['ordem'].replace('', None)
+
     ordens.dropna(subset=['ordem', 'data_ini', 'hora_ini'], inplace=True)
     ordens['hora_ini'] = ordens['hora_ini'].apply(format_timedelta)
     ordens['hora_fim'] = ordens['hora_fim'].apply(format_timedelta)
