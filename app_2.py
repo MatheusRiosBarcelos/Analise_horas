@@ -230,15 +230,13 @@ def update_svg(svg_path, data, pedidos):
 
 @st.cache_resource
 def get_db_connection():
-    username = 'capsys31_matheus'
-    password = 'mineiro12369'
-    host = '162.241.203.202'
-    port = '3306'
-    database = 'capsys31_elohim'
-    
-    connection_string = f'mysql+mysqlconnector://{username}:{password}@{host}:{port}/{database}'
-    engine = create_engine(connection_string)
-    
+    MYSQL_USER = st.secrets["MYSQL_USER"]
+    MYSQL_PASSWORD = st.secrets["MYSQL_PASSWORD"]
+    MYSQL_HOST = st.secrets["MYSQL_HOST"]
+    MYSQL_DATABASE = st.secrets["MYSQL_DATABASE"]
+
+    engine = create_engine(f"mysql+mysqlconnector://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{'3306'}/{MYSQL_DATABASE}")
+
     return engine
 
 def fetch_data(_engine):
