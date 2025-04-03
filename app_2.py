@@ -417,7 +417,7 @@ lista_estacoes = [
     'FRESADORA - SIDNEY',
     'TORNO CONV. - SIDNEY',
     'TORNO CONV. - GIOVANNI',
-    'TORNO CONV. - JOAO BATISTA',
+    'TORNO CONV. - JOÃO BATISTA',
     'TORNO CONV. - PEDRO',
     'TORNO CONV. - ANTONIO MARCOS',
     'CORTE - SERRA',
